@@ -1,0 +1,17 @@
+replicate	cellType	condition	name
+S1	1	216	Normoxic	Normoxic_Rep1_RNA_216
+S2	2	216	Normoxic	Normoxic_Rep2_RNA_216
+S3	1	216	Hypoxic	Hypoxic_Rep1_RNA_216
+S4	2	216	Hypoxic	Hypoxic_Rep2_RNA_216
+S5	1	315	Normoxic	Normoxic_Rep1_RNA_315
+S6	2	315	Normoxic	Normoxic_Rep2_RNA_315
+S7	1	315	Hypoxic	Hypoxic_Rep1_RNA_315
+S8	2	315	Hypoxic	Hypoxic_Rep2_RNA_315
+rS1	1	216	Normoxic	Normoxic_Rep1_rRNA_216
+rS2	2	216	Normoxic	Normoxic_Rep2_rRNA_216
+rS3	1	216	Hypoxic	Hypoxic_Rep1_rRNA_216
+rS4	2	216	Hypoxic	Hypoxic_Rep2_rRNA_216
+rS5	1	315	Normoxic	Normoxic_Rep1_rRNA_315
+rS6	2	315	Normoxic	Normoxic_Rep2_rRNA_315
+rS7	1	315	Hypoxic	Hypoxic_Rep1_rRNA_315
+rS8	2	315	Hypoxic	Hypoxic_Rep2_rRNA_315
