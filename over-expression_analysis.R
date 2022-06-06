@@ -31,12 +31,35 @@ cluster_summary <- data.frame(ego)
 write.csv(cluster_summary, "results/clusterProfiler_HN.csv")
 
 ## Dotplot 
-dotplot(ego, showCategory=50)
+dotplot(ego, showCategory=50, font.size = 10)
 
 ## Add similarity matrix to the termsim slot of enrichment result
 ego <- enrichplot::pairwise_termsim(ego)
 
 ## Enrichmap clusters the 50 most significant (by padj) GO terms to visualize relationships between terms
-emapplot(ego, showCategory = 50)
+emapplot(ego, showCategory = 30)
+
+## To color genes by log2 fold changes, we need to extract the log2 fold changes from our results table creating a named vector
+HN_foldchanges <- sigHN$log2FoldChange
+
+names(HN_foldchanges) <- sigHN$gene_id
+
+## Cnetplot details the genes associated with one or more terms - by default gives the top 5 significant terms (by padj)
+cnetplot(ego, 
+         categorySize="pvalue", 
+         showCategory = 5, 
+         foldChange=HN_foldchanges, 
+         vertex.label.font=6)
+
+## If some of the high fold changes are getting drowned out due to a large range, you could set a maximum fold change value
+HN_foldchanges <- ifelse(HN_foldchanges > 2, 2, HN_foldchanges)
+HN_foldchanges <- ifelse(HN_foldchanges < -2, -2, HN_foldchanges)
+
+cnetplot(ego, 
+         categorySize="pvalue", 
+         showCategory = 5, 
+         foldChange=HN_foldchanges, 
+         vertex.label.font=6)
+
 
 
