@@ -7,7 +7,7 @@ library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 library(GenomicAlignments)
 library(BiocParallel)
 library(Rsubread)
-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
+
 # Read the metadata
 ## NOTE: There is a possibility that treatment groups were mislabeled at the Core
 ## during alignment - labels are being reversed here as a correction
