@@ -2,7 +2,7 @@
 title: "Practicing with R Markdown"
 author: "Himanshu Dashora"
 date: "`r Sys.Date()`"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
