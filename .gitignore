@@ -3,9 +3,9 @@
 .Rhistory
 .Rapp.history
 # Session Data files
-.RData
-.csv
-.txt
+*.RData
+*.csv
+*.txt
 # User-specific files
 .Ruserdata
 #RStudio files
@@ -16,5 +16,5 @@
 # R Environment Variables
 .Renviron
 # Image output files
-.png
-.pdf
+*.png
+*.pdf
