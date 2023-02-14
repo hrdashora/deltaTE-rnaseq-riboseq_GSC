@@ -1,4 +1,4 @@
-### STEP 3: Exploring DESeq2 results ###
+### STEP 4: Running ananlysis and exploring DESeq2 results ###
 
 # Perform differential expression testing with DESeq2
 rna_dds <- DESeq(dds.rna)
@@ -12,10 +12,12 @@ mcols(rna_res, use.names = TRUE) # information on each column in results
 summary(rna_res)
 summary(rpf_res)
 
+# Organize results by a significance cutoff of 0.05 
 rna_res.05 <- results(rna_dds, alpha = 0.05)
 rpf_res.05 <- results(rpf_dds, alpha = 0.05)
 table(rna_res.05$padj < 0.05)
 
+# Organize results by a log2 fold change threshold of 1
 rna_resLFC1 <- results(rna_dds, lfcThreshold = 1)
 rpf_resLFC1 <- results(rpf_dds, lfcThreshold = 1)
 table(rna_resLFC1$padj < 0.1)
@@ -28,29 +30,32 @@ rpf_resSig <- subset(rpf_res, padj < 0.1)
 head(rpf_resSig[ order(rpf_resSig$log2FoldChange), ])
 head(rpf_resSig[ order(rpf_resSig$log2FoldChange, decreasing = TRUE), ])
 
-# Apply fold change shrinkage
+# Apply fold change shrinkage, replacing previous results table
+resultsNames((rna_dds))
 rna_res <- lfcShrink(rna_dds,
-                     coef = "treatment_Hypoxic_vs_Normoxic",
+                     coef = "treatment_Hypoxia_vs_Normoxia",
                      type = "apeglm")
 rpf_res <- lfcShrink(rpf_dds,
-                     coef = "treatment_Hypoxic_vs_Normoxic",
+                     coef = "treatment_Hypoxia_vs_Normoxia",
                      type = "apeglm")
 
 # MA plot 
 plotMA(rna_res, ylim = c(-5, 5))
 plotMA(rpf_res, ylim = c(-5, 5))
+
+# Isolate the most significant gene and display on the MA plot
 topGene <- rownames(rpf_res)[which.min(rpf_res$padj)]
 with(rpf_res[topGene, ], {
-  points(baseMean, log2FoldChange, col="dodgerblue", cex=2, lwd=2)
-  text(baseMean, log2FoldChange, topGene, pos=2, col="dodgerblue")
+  points(baseMean, log2FoldChange, col = "dodgerblue", cex = 2, lwd = 2)
+  text(baseMean, log2FoldChange, topGene, pos = 2, col = "dodgerblue")
 })
 
 # Histogram of the p-values
 hist(rna_res$pvalue[rna_res$baseMean > 1], breaks = 0:20/20,
      col = "grey50", border = "white")
 
-# Gene clustering
-topVarGenes_rna <- head(order(rowVars(assay(vsd.rna)), decreasing = TRUE), 20)
+# Gene clustering using heatmap
+topVarGenes_rna <- head(order(rowVars(assay(vsd.rna)), decreasing = TRUE), 20) # select top 20 genes rows with highest variance estimates
 topVarGenes_rpf <- head(order(rowVars(assay(vsd.rpf)), decreasing = TRUE), 20)
 
 mat_rna  <- assay(vsd.rna)[ topVarGenes_rna, ]

@@ -71,7 +71,8 @@ rowRanges(se.rpf)
 str(metadata(rowRanges(se.rpf)))
 
 colData(se.rna) # information about the samples or experiments, currently empty
-str_remove(str_sub(colnames(se.rna), 1, 3), "0") == sampleTable.rna$sample # confirm that columns of SE are in the same order as the rows of sampleTable
+# confirm that columns of SE are in the same order as the rows of sampleTable
+str_remove(str_sub(colnames(se.rna), 1, 3), "0") == sampleTable.rna$sample
 (colData(se.rna) <- DataFrame(sampleTable.rna))
 colData(se.rna)
 
@@ -79,16 +80,5 @@ colData(se.rpf)
 str_remove(str_sub(colnames(se.rpf), 1, 4), "0") == sampleTable.rpf$sample
 (colData(se.rpf) <- DataFrame(sampleTable.rpf))
 colData(se.rpf)
-
-# # Alternative counts with featureCounts in Rsubread
-# fc.rna <- featureCounts(files = filenames.rna,
-#                         annot.inbuilt = "hg19",
-#                         isPairedEnd = FALSE)
-# fc.rpf <- featureCounts(files = filenames.rpf,
-#                         annot.inbuilt = "hg19",
-#                         isPairedEnd = FALSE)
-# colnames(fc.rna$counts) <- sampleTable.rna$sample
-# colnames(fc.rpf$counts) <- sampleTable.rpf$sample
-# head(fc.rna$counts)
 
 save(se.rna, se.rpf, sampleTable.rna, sampleTable.rpf, file = "RNA-RIBO_SummarizedExperiment.RData")
