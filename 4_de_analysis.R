@@ -1,4 +1,4 @@
-### STEP 4: Running ananlysis and exploring DESeq2 results ###
+### STEP 4: Running analysis and exploring DESeq2 results ###
 
 # Perform differential expression testing with DESeq2
 rna_dds <- DESeq(dds.rna)

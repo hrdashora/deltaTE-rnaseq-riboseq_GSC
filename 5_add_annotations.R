@@ -1,4 +1,5 @@
-### STEP 4: Annotating significant genes ###
+### STEP 5: Annotating Entrez gene IDs with gene symbols ###
+
 load("~/opt/r/rnaseq-riboseq/RNA-RIBO_SummarizedExperiment.RData")
 load("~/opt/r/rnaseq-riboseq/RNA-RIBO_DESeqResults.RData")
 
@@ -23,18 +24,27 @@ rpf_res$symbol <- mapIds(org.Hs.eg.db,
                          keytype = "ENTREZID",
                          multiVals = "first")
 
-resOrdered_rna <- rna_res[order(rna_res$pvalue),]
-resOrdered_rpf <- rpf_res[order(rpf_res$pvalue),]
+resOrdered_rna <- rna_res[order(rna_res$padj),] # order results by adjusted p-value
+resOrdered_rpf <- rpf_res[order(rpf_res$padj),]
 
-# Determine how many of the symbol column entries are NA
-length(which(is.na(resOrdered_rna$symbol))) # 117 
-length(which(is.na(resOrdered_rpf$symbol))) # 127
+# Determine how many of results table values are NA
+## Row contains a sample with an extreme count outlier
+length(which(is.na(resOrdered_rna$pvalue))) # 0
+length(which(is.na(resOrdered_rpf$pvalue)))
 
-keep_rna <- !is.na(resOrdered_rna$symbol)
-keep_rpf <- !is.na(resOrdered_rpf$symbol)
+## Row is marked by automatic independent filtering for having a low mean normalized count
+length(which(is.na(resOrdered_rna$padj))) # 4513
+length(which(is.na(resOrdered_rpf$padj))) # 2190
 
+# Keep genes witch pass the independent filtering threshold
+keep_rna <- !is.na(resOrdered_rna$padj)
+keep_rpf <- !is.na(resOrdered_rpf$padj)
 resKeepOrdered_rna <- resOrdered_rna[keep_rna, ]
 resKeepOrdered_rpf <- resOrdered_rpf[keep_rpf, ]
+
+# How many of the symbol column entries are NA?
+length(which(is.na(resKeepOrdered_rna$symbol))) # 85
+length(which(is.na(resKeepOrdered_rpf$symbol))) # 106
 
 # Create a tibble of results
 resdf_rna <- resKeepOrdered_rna %>%
