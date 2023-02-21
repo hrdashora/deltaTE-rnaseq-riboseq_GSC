@@ -1,4 +1,4 @@
-### STEP 6: Categorizing genes by transcription and translation regulation ###
+### STEP 7: Categorizing genes by transcription and translation regulation ###
 
 # Load libraries
 library(tidyverse)
@@ -10,18 +10,19 @@ merge_rnarpf <- dplyr::inner_join(
   suffix = c(".rna", ".rpf")) %>%
   tidyr::drop_na(padj.rna, padj.rpf, log2FoldChange.rna, log2FoldChange.rpf)
 
-merge_rnarpf <- merge_rnarpf %>% # strict p-value and LFC thresholds
+# Organize genes from RNA/RPF into terciles
+merge_rnarpf <- merge_rnarpf %>% # strict p-value (0.10) and LFC (1) thresholds
   dplyr::mutate(category_rna = dplyr::case_when(
-    padj.rna < 1e-05 & log2FoldChange.rna >= log2(2) ~ "H",
-    padj.rna < 1e-05 & log2FoldChange.rna <= -log2(2) ~ "L",
-    padj.rna < 1e-05 & abs(log2FoldChange.rna) < log2(2) ~ "M",
-    padj.rna > 1e-05  ~ "M")
+    padj.rna < 0.10 & log2FoldChange.rna >= log2(2) ~ "H",
+    padj.rna < 0.10 & log2FoldChange.rna <= -log2(2) ~ "L",
+    padj.rna < 0.10 & abs(log2FoldChange.rna) < log2(2) ~ "M",
+    padj.rna > 0.10  ~ "M")
   ) %>%
   dplyr::mutate(category_rpf = dplyr::case_when(
-    padj.rpf < 1e-05 & log2FoldChange.rpf >= log2(2) ~ "H",
-    padj.rpf < 1e-05 & log2FoldChange.rpf <= -log2(2) ~ "L",
-    padj.rpf < 1e-05 & abs(log2FoldChange.rpf) < log2(2) ~ "M",
-    padj.rpf > 1e-05  ~ "M")
+    padj.rpf < 0.10 & log2FoldChange.rpf >= log2(2) ~ "H",
+    padj.rpf < 0.10 & log2FoldChange.rpf <= -log2(2) ~ "L",
+    padj.rpf < 0.10 & abs(log2FoldChange.rpf) < log2(2) ~ "M",
+    padj.rpf > 0.10  ~ "M")
   ) %>%
   tidyr::unite(category_rnarpf, c("category_rna", "category_rpf"))
 
@@ -43,26 +44,9 @@ merge_rnarpf <- left_join(merge_rnarpf, delta_te, by = c("entrez" = "gene_id")) 
     category_rnarpf == "H_L" | category_rnarpf == "M_L"  ~ "TE.down",
     category_rnarpf == "H_H" | category_rnarpf == "L_L"  ~ "TE.con",
     category_rnarpf == "L_M" | category_rnarpf == "H_M" ~ "TE.buff",
-    category_rnarpf == "MM" ~ "NS"
+    category_rnarpf == "M_M" ~ "NS"
     )
   )
-
-# merge.te <- dplyr::inner_join(x = resdf.rna,
-#                             y = resdf.rpf,
-#                             by = "gene_id",
-#                             suffix = c(".rna", ".rpf")) %>%
-#   left_join(delta_te, by = "gene_id") %>%
-#   drop_na(padj.rna,
-#           padj.rpf,
-#           log2FoldChange.rna,
-#           log2FoldChange.rpf,
-#           log2.delta_te,
-#           delta_te) %>%
-#   mutate(level.te = dplyr::case_when(
-#     log2.delta_te >= log2(1) ~ "TE.up",
-#     log2.delta_te <= log2(1) ~ "TE.down")
-#     #log2.delta_te < log2(1.5) & log2.delta_te > log2(2/3) ~ "TE.mid")
-#     )
 
 write_csv(merge_rnarpf,
           file = "results/te_categories.csv")
@@ -70,6 +54,7 @@ write_csv(merge_rnarpf,
 scatterNums <- summarise(merge_rnarpf %>% group_by(category_rnarpf), num = n())
 scatterNums
 
+# Visualize the proportions of genes in categories
 pie <- ggplot(dplyr::slice(scatterNums, 1:8), aes(x = "", y = num, fill = category_rnarpf)) +
   geom_bar(stat = "identity", width=1) +
   coord_polar("y", start = 0) +
@@ -94,69 +79,30 @@ scatterlfc <- ggplot(merge_rnarpf %>% filter(category_rnarpf != "M_M"),
   scale_colour_brewer(palette = "Dark2",
                       name = "Category",
                       labels = c("HH", "HL", "HM", "LH", "LL", "LM", "MH", "ML")) +
-  labs(x = expression(Delta*"RNA"),
-       y = expression(Delta*"RPF")) +
+  labs(x = expression(Delta*"RNA (Log2 FC)"),
+       y = expression(Delta*"RPF (Log2 FC)")) +
+  geom_abline(slope = 1, linetype = "dashed", color = "red") +
   theme_classic()
 scatterlfc
-
-# ggplot(scatterData %>% filter(category.rna.rpf != "M_M"),
-#        aes(x=category.rna.rpf, y=log2.delta_te)) +
-#   geom_boxplot(outlier.shape = NA) +
-#   coord_cartesian(ylim=c(0,6)) +
-#   labs(x = "Category",
-#        y = expression(Delta*"TE")) +
-#   scale_x_discrete(labels = c("HH", "HL", "HM", "LH", "LL", "LM", "MH", "ML")) +
-#   geom_hline(aes(yintercept=1), linetype = "dashed", color = "red") +
-#   theme_classic()
 
 box <- ggplot(merge_rnarpf %>% filter(category_rnarpf != "M_M"),
        aes(x = category_rnarpf, y = log2_delta_te, fill = category_rnarpf)) +
   geom_boxplot() +
   coord_cartesian() +
   labs(x = "Category",
-       y = expression(Delta*"TE")) +
+       y = expression(Delta*"TE (Log2 FC Ratio)")) +
   scale_fill_brewer(palette="Dark2") +
   scale_x_discrete(labels = c("HH", "HL", "HM", "LH", "LL", "LM", "MH", "ML")) +
-  geom_hline(aes(yintercept=0), linetype = "dashed", color = "red") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
   theme_classic() +
   theme(legend.position = "none")
 box
 
-# tedata <- dplyr::select(te, gene_id, treatment, log2.te, te) %>%
-#   pivot_wider(names_from = treatment, values_from = c(log2.te, te)) %>%
-#   left_join(merge, by = "gene_id") %>%
-#   drop_na(category.rna.rpf)
-# 
-# scatterte <- ggplot(tedata %>% filter(category.rna.rpf != "M_M"),
-#                     aes(x=log2.te_Normoxic,
-#                         y=log2.te_Hypoxic,
-#                         color = category.rna.rpf)) +
-#   geom_point() +
-#   scale_colour_brewer(palette = "Dark2",
-#                       name = "Category",
-#                       labels = c("HH", "HL", "HM", "LH", "LL", "LM", "MH", "ML")) +
-#   labs(x = "TE (Normoxia)",
-#        y = "TE (Hypoxia)") +
-#   theme_classic()
-# scatterte
-
 plot_grid(
   scatterlfc,
-  pie,
-  scatterte,
   box,
-  axis = "l",
-  align = 'vh',
+  axis = "b",
+  align = 'h',
   labels = "AUTO",
-  nrow = 2
+  nrow = 1
 )
-
-ggplot(merge_rnarpf %>% filter(!str_ends(.$category_rnarpf,"M")),
-       aes(x=category_te, y=log2_delta_te)) +
-  geom_boxplot() +
-  coord_cartesian() +
-  labs(x = "Category",
-       y = expression(paste("log","2","(",Delta*"TE)"))) +
-  #scale_x_discrete(labels = c("HH", "HL", "HM", "LH", "LL", "LM", "MH", "ML", "MM")) +
-  geom_hline(aes(yintercept=0), linetype = "dashed", color = "red") +
-  theme_classic()
