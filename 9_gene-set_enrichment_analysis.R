@@ -1,4 +1,4 @@
-### STEP 8: Gene Set Enrichment Analysis ###
+### STEP 9: Gene Set Enrichment Analysis per cluster###
 
 # Create ordered ranked gene lists
 sum(is.na(resTested$gene_id)) # Check if NA values are removed

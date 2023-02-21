@@ -13,16 +13,16 @@ merge_rnarpf <- dplyr::inner_join(
 # Organize genes from RNA/RPF into terciles
 merge_rnarpf <- merge_rnarpf %>% # strict p-value (0.10) and LFC (1) thresholds
   dplyr::mutate(category_rna = dplyr::case_when(
-    padj.rna < 0.10 & log2FoldChange.rna >= log2(2) ~ "H",
-    padj.rna < 0.10 & log2FoldChange.rna <= -log2(2) ~ "L",
-    padj.rna < 0.10 & abs(log2FoldChange.rna) < log2(2) ~ "M",
-    padj.rna > 0.10  ~ "M")
+    padj.rna < 0.1 & log2FoldChange.rna >= log2(2) ~ "H",
+    padj.rna < 0.1 & log2FoldChange.rna <= -log2(2) ~ "L",
+    padj.rna < 0.1 & abs(log2FoldChange.rna) < log2(2) ~ "M",
+    padj.rna > 0.1  ~ "M")
   ) %>%
   dplyr::mutate(category_rpf = dplyr::case_when(
-    padj.rpf < 0.10 & log2FoldChange.rpf >= log2(2) ~ "H",
-    padj.rpf < 0.10 & log2FoldChange.rpf <= -log2(2) ~ "L",
-    padj.rpf < 0.10 & abs(log2FoldChange.rpf) < log2(2) ~ "M",
-    padj.rpf > 0.10  ~ "M")
+    padj.rpf < 0.1 & log2FoldChange.rpf >= log2(2) ~ "H",
+    padj.rpf < 0.1 & log2FoldChange.rpf <= -log2(2) ~ "L",
+    padj.rpf < 0.1 & abs(log2FoldChange.rpf) < log2(2) ~ "M",
+    padj.rpf > 0.1  ~ "M")
   ) %>%
   tidyr::unite(category_rnarpf, c("category_rna", "category_rpf"))
 

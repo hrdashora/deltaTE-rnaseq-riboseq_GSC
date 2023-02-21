@@ -1,37 +1,56 @@
-### STEP 7: Over-expression Analysis ###
+### STEP 8: Over-expression analysis per cluster###
 
 # Load libraries
-library(pathview)
 library(ReactomePA)
 library(clusterProfiler)
 library(topGO)
 library(org.Hs.eg.db)
 
-# Assign DESeq2 results to new variable
-resTested <- merge_rnarpf %>%
+# Access DESeq2 results from CSV
+
+
+resTested <- read_csv("results/te_categories.csv") %>%
   mutate(category_rnarpf = as.factor(category_rnarpf), category_te = as.factor(category_te))  # subset of genes that survived independent filtering in both RNA-seq and RIBO-seq
 
-# Extract significant gene lists
+# Extract significant gene lists from RNA-seq and RIBO-seq and prepare for ORA
 sig_genes.rna <- resTested %>%
-  dplyr::filter(padj.rna < 0.1 & abs(log2FoldChange.rna) >= log(1.5, 2)) # evidence of a fold change greater than 2
-  # dplyr::arrange(padj.rpf) %>%
-  # head(200)
+  dplyr::filter(padj.rna < 0.1 & abs(log2FoldChange.rna) >= log2(2)) %>%
+  select(entrez, log2FoldChange.rna)
+ORAgeneList.rna <- sig_genes.rna$log2FoldChange.rna # feature 1: numeric vector
+names(ORAgeneList.rna) <- dplyr::pull(sig_genes.rna, entrez) # feature 2: named vector
+ORAgeneList.rna <- sort(ORAgeneList.rna, decreasing = TRUE) # feature 3: decreasing order
+de.rna <- names(ORAgeneList.rna) # fold changes not needed for ORA
+
 sig_genes.rpf <- resTested %>%
-  dplyr::filter(padj.rpf < 0.1 & abs(log2FoldChange.rpf) >= log(2, 2)) %>%
-  dplyr::arrange(padj.rpf) %>%
-  head(200)
+  dplyr::filter(padj.rpf < 0.1 & abs(log2FoldChange.rpf) >= log2(2)) %>%
+  select(entrez, log2FoldChange.rpf)
+ORAgeneList.rpf <- sig_genes.rpf$log2FoldChange.rpf
+names(ORAgeneList.rpf) <- dplyr::pull(sig_genes.rpf, entrez)
+ORAgeneList.rpf <- sort(ORAgeneList.rpf, decreasing = TRUE)
+de.rpf <- names(ORAgeneList.rpf)
 
+# Identify enriched GO & Reactome pathways by over-representation analysis in RNA-seq and RIBO-seq separately
+ego <- enrichGO(gene = de.rna,
+                universe = as.character(dplyr::pull(resTested, entrez)),
+                OrgDb = org.Hs.eg.db,
+                ont = "BP",
+                pAdjustMethod = "BH",
+                readable = TRUE)
+head(ego)
+dotplot(ego)
+x <- enrichPathway(gene = de.rna, readable = TRUE)
+head(x)
 
-
+# Perform ORA on the genes in each cluster
 categoryList <- resTested %>%
-  group_by(category.te) %>%
+  group_by(category_rnarpf) %>%
   group_split() %>%
-  set_names(levels(resTested$category.te))
+  set_names(levels(resTested$category_rnarpf))
 
 # Comparing multiple gene lists
 gcSample <- sapply(categoryList, simplify = FALSE, USE.NAMES = TRUE, function(df) {
   df %>%
-    dplyr::pull(gene_id) # convert two-column data frame into a named vector
+    dplyr::pull(entrez) # convert two-column data frame into a named vector
 })
 
 ck <- compareCluster(geneClusters = gcSample, fun = "enrichPathway")
