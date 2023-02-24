@@ -1,4 +1,4 @@
-### STEP 8: Over-expression analysis per cluster###
+### STEP 8: Over-expression analysis of Reactome pathways###
 
 # Load libraries
 library(ReactomePA)
@@ -6,48 +6,46 @@ library(clusterProfiler)
 library(topGO)
 library(org.Hs.eg.db)
 
-# Access DESeq2 results from CSV
-
-
-resTested <- read_csv("results/te_categories.csv") %>%
+# Access DESeq2 results from CSV files
+res_rna <- read_csv(file = "results/rna_results.csv")
+res_rpf <- read_csv(file = "results/rpf_results.csv")
+res_merge <- read_csv("results/te_categories.csv") %>%
   mutate(category_rnarpf = as.factor(category_rnarpf), category_te = as.factor(category_te))  # subset of genes that survived independent filtering in both RNA-seq and RIBO-seq
 
-# Extract significant gene lists from RNA-seq and RIBO-seq and prepare for ORA
-sig_genes.rna <- resTested %>%
-  dplyr::filter(padj.rna < 0.1 & abs(log2FoldChange.rna) >= log2(2)) %>%
-  select(entrez, log2FoldChange.rna)
-ORAgeneList.rna <- sig_genes.rna$log2FoldChange.rna # feature 1: numeric vector
-names(ORAgeneList.rna) <- dplyr::pull(sig_genes.rna, entrez) # feature 2: named vector
-ORAgeneList.rna <- sort(ORAgeneList.rna, decreasing = TRUE) # feature 3: decreasing order
-de.rna <- names(ORAgeneList.rna) # fold changes not needed for ORA
+# Prepare geneLists for clusterProfiler
+geneList_rna <- res_rna %>% dplyr::pull(log2FoldChange) # feature 1: numeric vector
+names(geneList_rna) <- res_rna %>% dplyr::pull(entrez) %>% as.character() # feature 2: named vector
+geneList_rna <- sort(geneList_rna, decreasing = TRUE) # feature 3: decreasing order
 
-sig_genes.rpf <- resTested %>%
-  dplyr::filter(padj.rpf < 0.1 & abs(log2FoldChange.rpf) >= log2(2)) %>%
-  select(entrez, log2FoldChange.rpf)
-ORAgeneList.rpf <- sig_genes.rpf$log2FoldChange.rpf
-names(ORAgeneList.rpf) <- dplyr::pull(sig_genes.rpf, entrez)
-ORAgeneList.rpf <- sort(ORAgeneList.rpf, decreasing = TRUE)
-de.rpf <- names(ORAgeneList.rpf)
+geneList_rpf <- res_rpf %>% dplyr::pull(log2FoldChange)
+names(geneList_rpf) <- res_rpf %>% dplyr::pull(entrez) %>% as.character()
+geneList_rpf <- sort(geneList_rpf, decreasing = TRUE)
 
-# Identify enriched GO & Reactome pathways by over-representation analysis in RNA-seq and RIBO-seq separately
-ego <- enrichGO(gene = de.rna,
-                universe = as.character(dplyr::pull(resTested, entrez)),
-                OrgDb = org.Hs.eg.db,
-                ont = "BP",
-                pAdjustMethod = "BH",
-                readable = TRUE)
-head(ego)
-dotplot(ego)
-x <- enrichPathway(gene = de.rna, readable = TRUE)
-head(x)
+# Identify enriched Reactome pathways by ORA in RNA-seq and RIBO-seq separately
+de_rna <- names(geneList_rna)[abs(geneList_rna) > 1.5]
+head(de_rna)
+epath_rna <- enrichPathway(gene = de_rna,
+                       universe = names(geneList_rna),
+                       organism = "human",
+                       readable = TRUE)
+head(epath_rna)
 
-# Perform ORA on the genes in each cluster
-categoryList <- resTested %>%
+de_rpf <- names(geneList_rpf)[abs(geneList_rpf) > 1.5]
+head(de_rpf)
+epath_rpf <- enrichPathway(gene = de_rpf,
+                           universe = names(geneList_rpf),
+                           organism = "human",
+                           readable = TRUE)
+head(epath_rpf)
+
+# Split merged DESeq2 data into list based on cluster
+categoryList <- res_merge %>%
   group_by(category_rnarpf) %>%
   group_split() %>%
-  set_names(levels(resTested$category_rnarpf))
+  set_names(levels(res_merge$category_rnarpf))
+categoryList <- categoryList[1:8]
 
-# Comparing multiple gene lists
+# Compare multiple gene lists
 gcSample <- sapply(categoryList, simplify = FALSE, USE.NAMES = TRUE, function(df) {
   df %>%
     dplyr::pull(entrez) # convert two-column data frame into a named vector
@@ -55,42 +53,8 @@ gcSample <- sapply(categoryList, simplify = FALSE, USE.NAMES = TRUE, function(df
 
 ck <- compareCluster(geneClusters = gcSample, fun = "enrichPathway")
 head(ck)
-enrichplot::dotplot(ck, font.size = 8, showCategory = 10, label_format = 60)
-cnetplot(ck)
+enrichplot::dotplot(ck)
 
-# GO over-representation analysis with clusterProfiler -----------------------------------------------------------
-# Initialize variables for for-loop
-egolist <- vector(mode = 'list', length(categoryList))
-names(egolist) <- names(categoryList)
-egosummary <- vector(mode = 'list', length(categoryList))
-names(egosummary) <- names(categoryList)
-
-# Create for-loop to conduct GO analysis on categories and output results to a list of dataframes
-for (j in 1:length(categoryList)) {
-  input <- categoryList[[j]]
-  gene <- as.character(input$gene_id)
-  egolist[[j]] <- enrichGO(gene = gene,
-                           keyType = "ENTREZID",
-                           OrgDb = org.Hs.eg.db,
-                           ont = "BP",
-                           pAdjustMethod = "BH",
-                           pvalueCutoff = 0.05,
-                           qvalueCutoff = 0.2,
-                           minGSSize = 10,
-                           maxGSSize = 500,
-                           readable = TRUE)
-  egosummary[[j]] <- data.frame(clusterProfiler::simplify(egolist[[j]]))
-}
-
-# Visualize enriched GO terms as a directed acyclic graph
-goplot(egolist[["TE.down"]])
-
-subset <- sapply(egosummary, simplify = FALSE, USE.NAMES = TRUE, function(df) {
-  df %>% dplyr::filter(p.adjust < 0.001) %>%
-    dplyr::select(ID, Description, GeneRatio, p.adjust, geneID)
-})
-
-# Reactome pathway over-representation analysis --------------------------------------------
 # Initialize variables for for-loop
 ereaclist <- vector(mode = 'list', length(categoryList))
 names(ereaclist) <- names(categoryList)
@@ -100,30 +64,15 @@ names(ereacsummary) <- names(categoryList)
 # Create for-loop to conduct Reactome analysis on categories and output results to a list of dataframes
 for (j in 1:length(categoryList)) {
   input <- categoryList[[j]]
-  gene <- as.character(input$gene_id)
+  gene <- as.character(input$entrez)
   ereaclist[[j]] <- ReactomePA::enrichPathway(gene = gene,
+                                              universe = as.character(dplyr::pull(res_merge, entrez)),
                                               organism = "human",
-                                              pvalueCutoff = 0.05,
-                                              pAdjustMethod = "BH",
-                                              qvalueCutoff = 0.2,
-                                              minGSSize = 10,
-                                              maxGSSize = 500,
                                               readable = TRUE)
   ereacsummary[[j]] <- data.frame(ereaclist[[j]])
 }
 
-
-hypolist <- ReactomePA::enrichPathway(gene = as.character(sig_genes.rna$entrez),
-                                      organism = "human",
-                                      pvalueCutoff = 0.05,
-                                      pAdjustMethod = "BH",
-                                      qvalueCutoff = 0.2,
-                                      minGSSize = 10,
-                                      maxGSSize = 500,
-                                      readable = TRUE)
-hyposummary <- data.frame(hypolist)
-
-# Visualize overlapping categories in Reactome pathways -------------------
+# Visualize overlapping categories in Reactome pathways
 idx <- vector()
 termvector <- vector()
 padjust <- vector()
@@ -150,13 +99,6 @@ overlapterms <- termmatrix[duplicated(termmatrix$termvector) | duplicated(termma
   distinct()
 uniqueterms <- unique(termmatrix$termvector)
 
-upregtermmatrix <- data.frame(idx, termvector, desc, padjust, count) %>%
-  filter(idx == "TE.up") %>%
-  mutate_at("desc", stringr::str_remove, pattern = "Homo sapiens\r: ") %>%
-  group_by(idx) %>% arrange(padjust, .by_group = TRUE)
-upregoverlap <- upregtermmatrix[duplicated(upregtermmatrix$termvector)|duplicated(upregtermmatrix$termvector, fromLast=TRUE),] %>%
-  distinct()
-
 ggplot(overlapterms, aes(x=desc, y=count, fill=idx)) +
   geom_bar(stat = "identity") +
   labs(y="Count", fill="Category")+
@@ -165,8 +107,6 @@ ggplot(overlapterms, aes(x=desc, y=count, fill=idx)) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle=90, hjust=1),
         legend.position = "top")
-
-
 
 # Enrichment Heatmap ------------------------------------------------------
 
@@ -291,6 +231,21 @@ enrichplot::upsetplot(edox2.rpf)
 #          foldChange=HN_foldchanges, 
 #          vertex.label.font=6)
 
+# Use MSigDBR to perform ORA with clusterProfiler
+all_gene_sets <- msigdbr(species = "Homo sapiens")
+head(all_gene_sets)
+h_gene_sets <- msigdbr(species = "human", category = "H")
+head(h_gene_sets)
+cgp_gene_sets <- msigdbr(species = "human", category = "C2", subcategory = "CGP")
+head(cgp_gene_sets)
+
+msigdbr_t2g <- cgp_gene_sets %>%
+  dplyr::distinct(gs_name, entrez_gene) %>%
+  as.data.frame()
+
+x <- enricher(gene = ...,
+              TERM2GENE = msigdbr_t2g)
+head(x)
 
 
 

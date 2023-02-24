@@ -1,351 +1,318 @@
-### STEP 9: Gene Set Enrichment Analysis per cluster###
+### STEP 9: Gene Set Enrichment Analysis of Reactome and MSigDB Pathways ###
 
-# Create ordered ranked gene lists
-sum(is.na(resTested$gene_id)) # Check if NA values are removed
-sum(duplicated(resTested$gene_id) == T) # Check for Entrez ID duplicates
+# Load libraries
+library(tidyverse)
+library(clusterProfiler)
+library(msigdbr)
+library(GSVA)
+library(ReactomePA)
+library(msigdb)
+library(ExperimentHub)
+library(GSEABase)
+library(limma)
+library(edgeR)
+library(RColorBrewer)
 
-sum(is.na(sig_genes.rna$entrez))
-sum(duplicated(is.na(sig_genes.rna$entrez) == T))
+# Utilize ranked geneList from previous script to run GSEA for Reactome
+head(geneList_rna)
+head(geneList_rpf)
 
-# Extract the fold changes and sort in decreasing order
-foldchanges.rna <- resTested %>%
-  dplyr::select(entrez, log2FoldChange.rna) %>%
-  arrange(desc(log2FoldChange.rna)) %>%
-  deframe()
-foldchanges.rpf <- resTested %>%
-  dplyr::select(entrez, log2FoldChange.rpf) %>%
-  arrange(desc(log2FoldChange.rpf)) %>%
-  deframe()
-
+# Create ranked a geneList for all clusters
 categoryRank <- sapply(categoryList, simplify = FALSE, USE.NAMES = TRUE, function(df){
   df %>%
-    dplyr::select(gene_id, log2FoldChange.rpf) %>% # gene lists will be ordered by RPF in the category analysis
+    dplyr::select(entrez, log2FoldChange.rpf) %>% # gene lists will be ranked by RPF in the category analysis
     arrange(desc(log2FoldChange.rpf)) %>%
     deframe() # convert two-column data frame into a named vector
 })
 
-set.seed(123456)
-
-# KEGG pathway gene set enrichment analysis ---------------------------------------------------------------
-
-# kegglist <- vector(mode='list', length(catgenelists))
-# names(kegglist) <- names(catgenelists)
-# keggsummary <- vector(mode='list', length(catgenelists))
-# names(keggsummary) <- names(catgenelists)
-# 
-# # Create for loop to conduct GO analysis on categories and output results 
-# # to a data frame
-# for (j in 1:length(catgenelists)) {
-#   input <- catgenelists[[j]]
-#   kegglist[[j]] <- gseKEGG(gene = as.character(input$gene_id),
-#                            universe = all_genes,
-#                            keyType = "ENTREZID",
-#                            OrgDb = org.Hs.eg.db,
-#                            ont = "BP", # biological process
-#                            pAdjustMethod = "BH",
-#                            qvalueCutoff = 0.05,
-#                            readable = TRUE)
-#   
-#   keggsummary[[j]] <- data.frame(kegglist[[j]])
-# }
-
-# GSEA using gene sets from KEGG pathways
-gseaKEGG.rna <- gseKEGG(geneList = foldchanges.rna, # ordered named vector of fold changes (Entrez IDs are the associated names)
-                        organism = "hsa", # supported organisms listed below
-                        minGSSize = 20, # minimum gene set size (# genes in set) - change to test more sets or recover sets with fewer # genes
-                        pvalueCutoff = 0.05, # padj cutoff value
+# Identify enriched Reactome pathways by GSEA in RNA-seq and RIBO-seq separately
+epath_rna <- gsePathway(geneList = geneList_rna,
+                        organism = "human",
                         verbose = TRUE)
-gseaKEGG.rpf <- gseKEGG(geneList = foldchanges.rpf, # ordered named vector of fold changes (Entrez IDs are the associated names)
-                        organism = "hsa", # supported organisms listed below
-                        minGSSize = 20, # minimum gene set size (# genes in set) - change to test more sets or recover sets with fewer # genes
-                        pvalueCutoff = 0.05, # padj cutoff value
+head(epath_rna)
+
+epath_rpf <- gsePathway(gene = geneList_rpf,
+                        organism = "human",
                         verbose = TRUE)
+head(epath_rpf)
 
-# Extract the GSEA results
-gseaKEGG_results.rna <- gseaKEGG.rna@result
-gseaKEGG_results.rpf <- gseaKEGG.rpf@result
+# Initialize variables for for-loop
+reaclist_gsea <- vector(mode = 'list', length(categoryRank))
+names(reaclist_gsea) <- names(categoryRank)
+reacsummary_gsea <- vector(mode = 'list', length(categoryRank))
+names(reacsummary_gsea) <- names(categoryRank)
 
-# Write GSEA results to file
-View(gseaKEGG_results.rna)
-write.csv(gseaKEGG_results.rna, "results/gseaHN_kegg.rna.csv", quote=F)
-View(gseaKEGG_results.rpf)
-write.csv(gseaKEGG_results.rpf, "results/gseaHN_kegg.rna.csv", quote=F)
-
-# Plot the GSEA plot for a single enriched pathway, `hsa03040`
-gseaplot(gseaKEGG.rpf, geneSetID = 'hsa03010')
-
-# Output images for a single significant KEGG pathway
-detach("package:dplyr", unload=TRUE) # unload dplyr to avoid conflicts
-library(pathview)
-hsa03010 <- pathview(gene.data = foldchanges.rpf,
-                     pathway.id = "hsa03010",
-                     species = "hsa",
-                     limit = list(gene = max(abs(foldchanges.rpf)), # value gives the max/min limit for foldchanges
-                                  cpd = 1))
-
-## Running score and preranked list of GSEA results
-gseaplot(gseaKEGG.rna, geneSetID = 1, by = "runningScore", title = gseaKEGG.rna$Description[1])
-gseaplot(gseaKEGG.rna, geneSetID = 1, by = "preranked", title = gseaKEGG.rna$Description[1])
-gseaplot(gseaKEGG.rna, geneSetID = 1, title = gseaKEGG.rna$Description[1])
-enrichplot::gseaplot2(gseaKEGG.rna, geneSetID = 1:3)
-enrichplot::gseaplot2(gseaKEGG.rna, geneSetID = 1:3, pvalue_table = TRUE,
-          color = c("#E495A5", "#86B875", "#7DB0DD"), ES_geom = "dot")
-enrichplot::gsearank(gseaKEGG.rna, 1, title = gseaKEGG.rna[1, "Description"])
-
-
-# GSEA GO --------------------------------------------------------------------
-
-gsego_all.rna <- gseGO(geneList = foldchanges.rna,
-                       OrgDb = org.Hs.eg.db,
-                       ont = "BP",
-                       keyType = "ENTREZID",
-                       minGSSize = 100,
-                       maxGSSize = 500,
-                       pvalueCutoff = 0.05,
-                       pAdjustMethod = "BH",
-                       verbose = TRUE)
-
-gsego_all.rpf <- gseGO(geneList = foldchanges.rpf,
-                       OrgDb = org.Hs.eg.db,
-                       ont = "BP",
-                       keyType = "ENTREZID",
-                       minGSSize = 100,
-                       maxGSSize = 500,
-                       pvalueCutoff = 0.05,
-                       pAdjustMethod = "BH",
-                       verbose = TRUE)
-
-golist.gsea <- vector(mode='list', length(catgenelists.gsea))
-names(golist.gsea) <- names(catgenelists.gsea)
-gosummary.gsea <- vector(mode='list', length(catgenelists.gsea))
-names(gosummary.gsea) <- names(catgenelists.gsea)
-
-# Create for loop to conduct GO analysis on categories and output results 
-# to a data frame
-
-for (j in 1:length(catgenelists.gsea)) {
-  input <- catgenelists.gsea[[j]]
-  golist.gsea[[j]] <- gseGO(geneList = input,
-                         OrgDb = org.Hs.eg.db,
-                         ont = "BP",
-                         keyType = "ENTREZID",
-                         minGSSize = 100,
-                         maxGSSize = 500,
-                         pvalueCutoff = 0.05,
-                         pAdjustMethod = "none",
-                         verbose = TRUE)
-  gosummary.gsea[[j]] <- data.frame(clusterProfiler::simplify(golist.gsea[[j]]))
-}
-
-# Reactome pathway gene set enrichment analysis --------------------------------------------
-# Initialize variable for for-loop
-reaclist.gsea <- vector(mode='list', length(categoryRank))
-names(reaclist.gsea) <- names(categoryRank)
-reacsummary.gsea <- vector(mode='list', length(categoryRank))
-names(reacsummary.gsea) <- names(categoryRank)
-
-# Create for loop to conduct Reactome analysis on categories and output results to a list of dataframes
+# Create for loop to conduct Reactome analysis on categories and output results as a list of dataframes
+## NOTE: Since the ranked geneList in each cluster does not spanning the entire genome, GSEA is not as informative as ORA
 for (j in 1:length(categoryRank)) {
   input <- categoryRank[[j]]
-  reaclist.gsea[[j]] <- ReactomePA::gsePathway(geneList = input, # NOTE: gene list is order ranked by RPF LFC
+  reaclist_gsea[[j]] <- ReactomePA::gsePathway(geneList = input, # NOTE: gene list is ranked by RPF LFCs
                                                organism = "human",
-                                               minGSSize = 10,
-                                               maxGSSize = 500,
-                                               pvalueCutoff = 0.2,
-                                               pAdjustMethod = "BH",
                                                verbose = TRUE)
-  reacsummary.gsea[[j]] <- data.frame(reaclist.gsea[[j]])
+  reacsummary_gsea[[j]] <- data.frame(reaclist_gsea[[j]])
 }
 
-# Pathway visualization 
-library(ReactomePA)
-
-# Chromatin modifying enzymes
-cat_lm <- readr::read_tsv(file = "/Users/himanshudashora/Downloads/cat_lm.txt")
-cat_mh <- readr::read_tsv(file = "/Users/himanshudashora/Downloads/cat_mh.txt")
-pathway <- "HATs acetylate histones"
+# Individual pathway visualization 
+pathway <- "Eukaryotic Translation Elongation"
 viewPathway(pathway,
+            organism = "human",
             readable = T,
-            foldChange = c(categoryRank[["L_M"]],categoryRank[["M_H"]]))
-str_split(as.character(cat_lm[1,7]), ",")
-str_split(as.character(cat_mh[8,7]), ",")
-#HATs acetylate histones
-#PKMTs methylate histone lysines
-
-# Cholesterol biosynthesis by SREBP
-pathway <- "Regulation of cholesterol biosynthesis by SREBP (SREBF)"
+            foldChange = geneList_rpf)
+pathway <- "Eukaryotic Translation Termination"
 viewPathway(pathway,
+            organism = "human",
             readable = T,
-            foldChange = foldchanges.rpf)
-str_split(as.character(cat_lm[30,7]), ",")
+            foldChange = geneList_rpf)
 
-pathway <- "Signaling by Rho GTPases"
-viewPathway(pathway,
-            readable = T)
-str_split(as.character(cat_lm[30,7]), ",")
+# Extract Reactome pathway genelists
+geneInCategory(epath_rpf)[["R-HSA-156902"]]
 
-# Signaling by NOTCH1
-cat_lh <- readr::read_tsv(file = "/Users/himanshudashora/Downloads/cat_lh.txt")
-pathway <- "Signaling by NOTCH1"
-viewPathway(pathway,
-            readable = T,
-            foldChange = categoryRank[["L_H"]])
-str_split(as.character(cat_lh[5,7]), ",")
-
-# SUMOylation
-pathway <- "SUMOylation of DNA damage response and repair proteins"
-viewPathway(pathway,
-            readable = T,
-            foldChange = categoryRank[["L_H"]])
-str_split(as.character(cat_lh[2,7]), ",")
-
-# Cellular Senescence
-pathway <- "Cellular Senescence"
-viewPathway(pathway,
-            readable = T,
-            foldChange = categoryRank[["M_H"]])
-str_split(as.character(cat_mh[23,7]), ",")
-
-# Signaling by Hedgehog
-pathway <- "Signaling by Hedgehog"
-viewPathway(pathway,
-            readable = T,
-            foldChange = categoryRank[["M_H"]])
-str_split(as.character(cat_mh[9,7]), ",")
-
-
-# Deubiquitination
-pathway <- "Ub-specific processing proteases"
-pathway <- "Deubiquitination"
-viewPathway(pathway,
-            readable = T,
-            foldChange = categoryRank[["M_H"]])
-str_split(as.character(cat_mh[12,7]), ",")
-
-# Signaling by WNT
-pathway <- "Beta-catenin independent WNT signaling"
-viewPathway(pathway,
-            readable = T,
-            foldChange = categoryRank[["L_M"]])
-str_split(as.character(cat_lm[34,7]), ",")
-
-# Signaling by RTK
-pathway <- "Signaling by Receptor Tyrosine Kinases"
-viewPathway(pathway,
-            readable = T,
-            foldChange = categoryRank[["L_M"]])
-str_split(as.character(cat_mh[21,7]), ",")
-
-cat_lm <- readr::read_tsv(file = "/Users/himanshudashora/Downloads/cat_lm.txt")
-
-# Extract reactome genelists
-require(ReactomePA)
-x <- enrichPathway(names(geneList)[1:100])
-geneInCategory(x)[["R-HSA-1655829.2"]]
 
 # MSigDB ------------------------------------------------------------------
+# Choose interesting gene sets on MSigDB 
+region_sets <- c("LEIN_ASTROCYTE_MARKERS",
+                 "LEIN_NEURON_MARKERS",
+                 "LEIN_OLIGODENDROCYTE_MARKERS")
 
-library(msigdb)
-library(ExperimentHub)
-library(GSEABase)
+hypoxia_sets <- c("SEMENZA_HIF1_TARGETS",
+                  "BUFFA_HYPOXIA_METAGENE",
+                  "WINTER_HYPOXIA_UP",
+                  "WINTER_HYPOXIA_DN",
+                  "WINTER_HYPOXIA_METAGENE")
 
+glioma_sets <- c("VERHAAK_GLIOBLASTOMA_NEURAL",
+                 "VERHAAK_GLIOBLASTOMA_PRONEURAL",
+                 "VERHAAK_GLIOBLASTOMA_CLASSICAL",
+                 "VERHAAK_GLIOBLASTOMA_MESENCHYMAL",
+                 "YAMANAKA_GLIOBLASTOMA_SURVIVAL_UP",
+                 "YAMANAKA_GLIOBLASTOMA_SURVIVAL_DN",
+                 "BEIER_GLIOMA_STEM_CELL_UP",
+                 "BEIER_GLIOMA_STEM_CELL_DN",
+                 "TCGA_GLIOBLASTOMA_COPY_NUMBER_UP",
+                 "TCGA_GLIOBLASTOMA_COPY_NUMBER_DN",
+                 "ZHENG_GLIOBLASTOMA_PLASTICITY_UP",
+                 "ZHENG_GLIOBLASTOMA_PLASTICITY_DN")
+
+# Download data from the msigdb R package
 eh <- ExperimentHub()
 query(eh, 'msigdb')
 msigdb.hs <- getMsigdb(org = "hs", id = "EZID", version = "7.5")
 
+# Access and explore the data
 length(msigdb.hs)
-
-gs <- msigdb.hs[["BUFFA_HYPOXIA_METAGENE"]]
-geneIds(gs)
-collectionType(gs)
-bcCategory(collectionType(gs))
-bcSubCategory(collectionType(gs))
-description(gs)
-details(gs)
-
 listCollections(msigdb.hs)
 listSubCollections(msigdb.hs)
-subsetCollection(msigdb.hs, 'h')
 
-library(limma)
+# Find our terms of interest in the GeneSetCollection object
+gs <- msigdb.hs[c(glioma_sets, hypoxia_sets, region_sets)]
+gs_ids <- geneIds(gs)
 
+# Retrieve curated and hallmark collections
+c2 <- subsetCollection(msigdb.hs, 'c2')
+c2_ids <- geneIds(c2)
+hallmarks <- subsetCollection(msigdb.hs, 'h')
+h_ids <- geneIds(hallmarks)
+
+# Create dummy expression data
 allg <- unique(unlist(geneIds(msigdb.hs)))
 emat <- matrix(0, nrow = length(allg), ncol = 6)
 rownames(emat) <- allg
 colnames(emat) <- paste0('sample', 1:6)
 head(emat)
 
-hallmarks <- subsetCollection(msigdb.hs, 'h')
-msigdb_ids <- geneIds(hallmarks)
+# Match dummy data format with rlog data from DESeq2
+exprs_mat <- assay(rld.rna)
+rownames(exprs_mat)
+colnames(exprs_mat) <- colData(dds.rna)$sample
+head(exprs_mat)
 
-fry_indices <- ids2indices(msigdb_ids, rownames(emat))
-fry_indices[1:2]
+# Convert gene sets into a list of gene indices
+h_indices <- ids2indices(h_ids, rownames(exprs_mat)) # index vectors for hallmark gene sets
+c2_indices <- ids2indices(c2_ids, rownames(exprs_mat)) # index vectors for curated gene sets
+gs_indices <- ids2indices(gs_ids, rownames(exprs_mat)) # index vectors for interesting gene sets
+c2_indices[1:2]
 
+# Create a design matrix and contrasts
+cell_line <- colData(dds.rna)$cell_line
+treatment <- colData(dds.rna)$treatment
+design <- model.matrix(~0+treatment+cell_line)
+colnames(design) <- gsub("treatment", "", colnames(design))
+design
+contr.matrix <- makeContrasts(
+  HypovsNorm = Hypoxia - Normoxia, 
+  levels = colnames(design))
+contr.matrix
 
-# GSVA --------------------------------------------------------------------
+# Apply the camera method to the hallmark gene sets
+h_cam.HypovsNorm <- camera(y = exprs_mat,
+                                  index = h_indices,
+                                  design = design,
+                                  contrast = contr.matrix[,1])
+c2_cam.HypovsNorm <- camera(y = exprs_mat,
+                            index = c2_indices,
+                            design = design,
+                            contrast = contr.matrix[,1])
+gs_cam.HypovsNorm <- camera(y = exprs_mat,
+                            index = gs_indices,
+                            design = design,
+                            contrast = contr.matrix[,1])
+head(c2_cam.HypovsNorm,5)
 
-library(GSVA)
+# Make a barcodeplot for particular gene signatures
+vfit <- lmFit(exprs_mat, design)
+vfit <- contrasts.fit(vfit, contrasts = contr.matrix[,1])
+efit <- eBayes(vfit)
 
-p <- 10000 ## number of genes
-n <- 30    ## number of samples
-## simulate expression values from a standard Gaussian distribution
-X <- matrix(rnorm(p*n), nrow=p,
-            dimnames=list(paste0("g", 1:p), paste0("s", 1:n)))
-X[1:5, 1:5]
+barcodeplot(efit$t[,1],
+            index = c2_indices$WINTER_HYPOXIA_UP, 
+            index2 = c2_indices$WINTER_HYPOXIA_DN,
+            main = "HypovsNorm")
 
-## sample gene set sizes
-gs <- as.list(sample(10:100, size=100, replace=TRUE))
-## sample gene sets
-gs <- lapply(gs, function(n, p)
-  paste0("g", sample(1:p, size=n, replace=FALSE)), p)
-names(gs) <- paste0("gs", 1:length(gs))
+barcodeplot(efit$t[,1],
+            index = c2_indices$YAMANAKA_GLIOBLASTOMA_SURVIVAL_UP, 
+            index2 = c2_indices$YAMANAKA_GLIOBLASTOMA_SURVIVAL_DN,
+            main = "HypovsNorm")
 
-gsva.es <- gsva(X, gs, verbose=FALSE)
-dim(gsva.es)
-gsva.es[1:5, 1:5]
+# Use GSVA for single sample gene set enrichment, starting with gene expression data matrix
+exprs_mat[1:5, 1:5] # rlog-transformed gene expression matrix
+assay(dds.rna) # un-transformed gene expression from SummarizedExperiment
 
-gsva(rna_dds, msigdb.hs, verbose = TRUE)
+# Calculate GSVA enrichment scores
+rna_gsva.es <- gsva(expr = dds.rna, # provide SummarizedExperiment object
+                    gset.idx.list = c2, # provide GeneSetCollection object
+                    annotation = "counts", # select the assay containing the input data
+                    method = "gsva",
+                    kcdf = "Poisson", # input expression values are integer counts (not log transformed)
+                    verbose = T)
 
-romer()
-roast()
-fry()
-camera()
+rpf_gsva.es <- gsva(expr = dds.rpf, # provide SummarizedExperiment object
+                    gset.idx.list = c2, # provide GeneSetCollection object
+                    annotation = "counts", # select the assay containing the input data
+                    method = "gsva",
+                    kcdf = "Poisson", # input expression values are integer counts (not log transformed)
+                    verbose = T)
 
+# Assess how gene expression profiles correlate between RNA-seq and RIBO-seq data
+rna_lcpms <- cpm(assay(dds.rna), log = TRUE)
+rpf_lcpms <- cpm(assay(dds.rpf), log = TRUE)
 
-# msigdbr -----------------------------------------------------------------
+# Ensure gene expression profiles from both assays are same dimentions and order
+rna_lcpms <- rna_lcpms[which(rownames(rna_lcpms) %in% rownames(rpf_lcpms)), ]
+dim(rna_lcpms)
+rpf_lcpms <- rpf_lcpms[which(rownames(rpf_lcpms) %in% rownames(rna_lcpms)), ]
+dim(rpf_lcpms)
 
-library(msigdbr)
+# Calculate Spearman correlations between gene expression profiles
+genecorrs <- sapply(1:nrow(rna_lcpms),
+                    function(i, exprnaseq, exprpfseq) cor(exprnaseq[i, ],
+                                                          exprpfseq[i, ],
+                                                          method = "spearman"),
+                    rna_lcpms, rpf_lcpms)
+names(genecorrs) <- rownames(rna_lcpms)
+hist(genecorrs, xlab="Spearman correlation", main="Gene level\n(RNA-seq log-CPMs vs RIBO-seq log-CPMs)",
+     xlim=c(-1, 1), col="grey", las=1)
+
+# Calculate Spearman correlations between GSVA enrichment scores
+pwycorrs <- sapply(1:nrow(assay(rna_gsva.es)),
+                   function(i, esrnaseq, esrpfseq) cor(esrnaseq[i, ],
+                                                       esrpfseq[i, ],
+                                                       method = "spearman"),
+                   assay(rna_gsva.es), assay(rpf_gsva.es))
+names(pwycorrs) <- rownames(assay(rna_gsva.es))
+hist(pwycorrs, xlab="Spearman correlation", main="Pathway level\n(GSVA enrichment scores)",
+     xlim=c(-1, 1), col="grey", las=1)
+
+# Heatmap of GSVA scores for msigdb signatures
+treatmentOrder <- c("Hypoxia", "Normoxia")
+sampleOrderByTreatment <- sort(match(rna_gsva.es$treatment, treatmentOrder),
+                               index.return = TRUE)$ix
+treatmentXtable <- table(rna_gsva.es$treatment)
+treatmentColorLegend <-  c(Hypoxia = "red", Normoxia = "blue")
+geneSetOrder <- c(glioma_sets, hypoxia_sets, region_sets)
+geneSetLabels <- gsub("_", " ", geneSetOrder)
+hmcol <- colorRampPalette(brewer.pal(10, "RdBu"))(256)
+hmcol <- hmcol[length(hmcol):1]
+
+heatmap(assay(rna_gsva.es)[geneSetOrder, sampleOrderByTreatment],
+        Rowv = NA,
+        Colv = NA,
+        scale = "row",
+        margins = c(3,5),
+        col = hmcol,
+        ColSideColors = rep(treatmentColorLegend[treatmentOrder],
+                            times = treatmentXtable[treatmentOrder]),
+        labCol = "",
+        rna_gsva.es$treatment[sampleOrderByTreatment],
+        labRow = paste(toupper(substring(geneSetLabels, 1, 1)),
+                       substring(geneSetLabels, 2), sep = ""),
+        cexRow = 2, 
+        main = " \n ")
+
+par(xpd=TRUE)
+text(0.23,1.21, "Hypoxia", col="red", cex=1.2)
+text(0.36,1.21, "Normoxia", col="blue", cex=1.2)
+mtext("Gene sets", side=4, line=0, cex=1.5)
+mtext("Samples          ", side=1, line=4, cex=1.5)
+
+# Conduct a differential expression analysis at a pathway level
+design <- model.matrix(~0+treatment+cell_line)
+colnames(design) <- gsub("treatment", "", colnames(design))
+design
+contr.matrix <- makeContrasts(
+  HypovsNorm = Hypoxia - Normoxia, 
+  levels = colnames(design))
+contr.matrix
+
+fit <- lmFit(assay(rna_gsva.es), design)
+fit <- contrasts.fit(fit, contrasts = contr.matrix[,1])
+fit <- eBayes(fit)
+res <- decideTests(fit, p.value = 0.05) 
+summary(res) # ~500 MSigDB C2 differentially expressed pathways with FDR < 5%
+
+# Show a volcano plot of the expression changes
+tt <- topTable(fit, coef = 1, n = Inf)
+DEpwys <- rownames(tt)[tt$adj.P.Val <= 0.05]
+plot(tt$logFC, -log10(tt$P.Value), pch=".", cex=4, col=grey(0.75),
+     main="", xlab="GSVA enrichment score difference", ylab=expression(-log[10]~~Raw~P-value))
+abline(h=-log10(max(tt$P.Value[tt$adj.P.Val <= 0.05])), col=grey(0.5), lwd=1, lty=2)
+points(tt$logFC[match(DEpwys, rownames(tt))],
+       -log10(tt$P.Value[match(DEpwys, rownames(tt))]), pch=".", cex=5, col="darkred")
+text(max(tt$logFC)*0.85, -log10(max(tt$P.Value[tt$adj.P.Val <= 0.05])), "5% FDR", pos=3)
+
+# Heatmap of GSVA enrichment scores for the differentially expressed pathways -- YOU ARE HERE
+DEpwys_es <- assay(rna_gsva.es)[DEpwys, ]
+colorLegend <- c("darkred", "darkblue")
+names(colorLegend) <- c("Hypoxia", "Normoxia")
+sample.color.map <- colorLegend[as.character(colData(rna_gsva.es)$treatment)]
+names(sample.color.map) <- colnames(DEpwys_es)
+sampleClustering <- hclust(as.dist(1-cor(DEpwys_es, method="spearman")),
+                           method="complete")
+geneSetClustering <- hclust(as.dist(1-cor(t(DEpwys_es), method="pearson")),
+                            method="complete")
+heatmap(DEpwys_es, ColSideColors=sample.color.map, xlab="samples",
+        ylab="Pathways", margins=c(2, 20),
+        labRow=substr(gsub("_", " ", gsub("^KEGG_|^REACTOME_|^BIOCARTA_", "",
+                                          rownames(DEpwys_es))), 1, 35),
+        labCol="", scale="row", Colv=as.dendrogram(sampleClustering),
+        Rowv=as.dendrogram(geneSetClustering))
+legend("topleft", names(colorLegend), fill=colorLegend, inset=0.01, bg="white")
+
+# Use MSigDBR to perform GSEA with clusterProfiler
 all_gene_sets <- msigdbr(species = "Homo sapiens")
 head(all_gene_sets)
 h_gene_sets <- msigdbr(species = "human", category = "H")
 head(h_gene_sets)
 cgp_gene_sets <- msigdbr(species = "human", category = "C2", subcategory = "CGP")
 head(cgp_gene_sets)
-gs <- cgp_gene_sets %>%
-  dplyr::filter(gs_name == "BUFFA_HYPOXIA_METAGENE")
 
-library(clusterProfiler)
-library(tidyverse)
-gene_ids_vector <- read_csv("results/rna_results.csv") %>%
-  select(entrez, log2FoldChange) %>%
-  dplyr::distinct(entrez, .keep_all = TRUE)
-## feature 1: numeric vector
-geneList <- gene_ids_vector$log2FoldChange
-## feature 2: named vector
-names(geneList) <- pull(gene_ids_vector, entrez)
-## feature 3: decreasing order
-geneList <- sort(geneList, decreasing = TRUE)
-
-msigdbr_t2g <- gs %>%
+msigdbr_t2g <- cgp_gene_sets %>%
   dplyr::distinct(gs_name, entrez_gene) %>%
   as.data.frame()
-enricher(gene = gene_ids_vector, TERM2GENE = msigdbr_t2g)
 
-y <- GSEA(geneList, TERM2GENE = msigdbr_t2g)
+y <- GSEA(geneList_rna,
+          TERM2GENE = msigdbr_t2g)
 head(y)
 gseaplot(y, "BUFFA_HYPOXIA_METAGENE")
 
-library(GSVA)
-expr <- counts(rna_dds, normalized = T)
-msigdbr_list <- split(x = gs$entrez_gene, f = gs$gs_name)
-GSVA::gsva(expr, gset.idx.list = msigdbr_list, method = "ssgsea")
+
+

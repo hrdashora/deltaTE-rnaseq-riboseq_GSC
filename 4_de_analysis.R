@@ -80,4 +80,7 @@ normCounts_rpf <- counts(rpf_dds, normalized = T) %>%
 save(rna_dds, rpf_dds,
      rna_res, rpf_res,
      normCounts_rna, normCounts_rpf,
+     rld.rna, rld.rpf,
+     vsd.rna, vsd.rpf,
+     rna_tpm, rpf_tpm,
      delta_te, file = "RNA-RIBO_DESeqResults.RData")
