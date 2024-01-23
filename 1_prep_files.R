@@ -14,23 +14,24 @@ suppressPackageStartupMessages({
 })
 
 # Prepare BAM files for counting ------------------------------------------
-## Prepare BAM files from GSCs and NPCs using data from CLP.
+## Prepare BAM files from GSCs and NPCs using data from CLP and JSY Drives.
 
 ## Once code section has been run, save the output objects as "se.rnaseq" and
 ## "se.riboseq".
 
-## Samples are all considered "Normoxic" but this needs to be validated
+## CLP samples are all considered "Normoxic" but this needs to be validated
 
-# Locate RNA-seq input files
-filenames.rnaseq.216 <- list.files(
-  path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF216_RNA_2019/BAM",
-  pattern = "^S.*\\.bam$",
-  full.names = TRUE)
+# Locate RNA-seq input files in CLP Drive
+filenames.rnaseq.216 <-
+  list.files(
+    path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF216_RNA_2019/BAM",
+    pattern = "^S.*\\.bam$",
+    full.names = TRUE)
 filenames.rnaseq.315 <- list.files(
   path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF315_RNA_2019/BAM",
   pattern = "^S.*\\.bam$",
   full.names = TRUE)
-filenames.rnaseq.318 <- c(
+filenames.rnaseq.318 <- c( # GSC 318 RNA-seq data is stored in two folders
   list.files(
     path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF318_RNA_2020/BAM",
     pattern = "^S.*\\.bam$",
@@ -39,7 +40,7 @@ filenames.rnaseq.318 <- c(
     path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF318_RNA_2021/BAM",
     pattern = "^S.*\\.bam$",
     full.names = TRUE)
-  ) # GSC 318 RNA-seq data is stored in two folders
+  ) 
 filenames.rnaseq.h1 <- list.files(
   path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/NPC_H1_RNA_2021/BAM",
   pattern = "^S.*\\.bam$",
@@ -48,14 +49,20 @@ filenames.rnaseq.h9 <- list.files(
   path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/NPC_H9_RNA_2021/BAM",
   pattern = "^H9.*\\.bam$",
   full.names = TRUE)
+
 filenames.rnaseq <- c(filenames.rnaseq.216,
                       filenames.rnaseq.315,
                       filenames.rnaseq.318,
                       filenames.rnaseq.h1,
-                      filenames.rnaseq.h9)
+                      filenames.rnaseq.h9,
+                      list.files(
+                        path = "/Volumes/yuj2lab/HRD/Sequencing/RNA Core/Jennifer_Project_mapped_data",
+                        pattern = "^S0.*\\.sorted.bam$",
+                        full.names = TRUE)) # add JSY Drive rna-seq files
+
 file.exists(filenames.rnaseq) # confirm file names are valid
 
-# Locate RIBO-seq input files
+# Locate RIBO-seq input files in CLP Drive
 filenames.riboseq.216 <- list.files(
   path = "/Volumes/yuj2lab/HRD/CLP Drive/RPF_BySampleName/GSC_CCF216_RPF_2020/BAM",
   pattern = "^rS.*\\.bam$",
@@ -64,7 +71,7 @@ filenames.riboseq.315 <- list.files(
   path = "/Volumes/yuj2lab/HRD/CLP Drive/RPF_BySampleName/GSC_CCF315_RPF_2020/BAM",
   pattern = "^rS.*\\.bam$",
   full.names = TRUE)
-filesnames.riboseq.318 <- list.files(
+filenames.riboseq.318 <- list.files(
   path = "/Volumes/yuj2lab/HRD/CLP Drive/RPF_BySampleName/GSC_CCF318_RPF_2020/BAM",
   pattern = "^rS.*\\.bam$",
   full.names = TRUE)
@@ -76,11 +83,17 @@ filenames.riboseq.h9 <- list.files(
   path = "/Volumes/yuj2lab/HRD/CLP Drive/RPF_BySampleName/NPC_H9_RPF_2021/BAM",
   pattern = "^rS.*\\.bam$",
   full.names = TRUE)
+
 filenames.riboseq <- c(filenames.riboseq.216,
                        filenames.riboseq.315,
-                       filesnames.riboseq.318,
+                       filenames.riboseq.318,
                        filenames.riboseq.h1,
-                       filenames.riboseq.h9)
+                       filenames.riboseq.h9,
+                       list.files(
+                         path = "/Volumes/yuj2lab/HRD/Sequencing/RNA Core/Jennifer_Project_mapped_data",
+                         pattern = "^rS0.*\\.bam$",
+                         full.names = TRUE)) # add JSY Drive RIBO-seq files
+
 file.exists(filenames.riboseq) # confirm file names are valid
 
 # Create references to BAM files
@@ -89,6 +102,15 @@ seqinfo(bamfiles.rnaseq[1]) # chromosome names for genomic features must match r
 bamfiles.riboseq <- BamFileList(filenames.riboseq, yieldSize = 2e6)
 seqinfo(bamfiles.riboseq[1])
 
+for(i in 1:length(filenames.rnaseq)) { # check BAM file headers in RNA-seq files
+  #open(BamFile(filenames.rnaseq[i])) 
+  scanBamHeader(BamFile(filenames.rnaseq[i]))
+}
+
+for(i in 1:length(filenames.riboseq)) { # check BAM file headers in RIBO-seq files
+  #open(BamFile(filenames.riboseq[i])) 
+  scanBamHeader(BamFile(filenames.riboseq[i]))
+}
 
 # Obtain count matrices from BAM files ------------------------------------
 ## Count reads that overlap with exons of known genes.
@@ -97,18 +119,30 @@ seqinfo(bamfiles.riboseq[1])
 txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
 ebg <- exonsBy(txdb, by = "gene")
 
-register(MulticoreParam(workers = 6)) # use 6 cores; Unix and Mac only
-se.rnaseq <- summarizeOverlaps(features = ebg,
-                               reads = bamfiles.rnaseq,
-                               mode = "Union",
-                               singleEnd = TRUE,
-                               ignore.strand = TRUE)
-se.riboseq <- summarizeOverlaps(features = ebg,
-                                reads = bamfiles.riboseq,
-                                mode = "Union",
-                                singleEnd = TRUE,
-                                ignore.strand = TRUE)
-register(SerialParam()) # return to single core
+register(MulticoreParam(workers = 10)) # use 10 cores; Unix and Mac only
+registered() # check registered back-ends
+
+## Run the following functions separately and save data in between
+## as they take a long time to run
+se.rnaseq_CLP <- summarizeOverlaps(features = ebg,
+                                   reads = bamfiles.rnaseq[1:15],
+                                   mode = "Union",
+                                   singleEnd = TRUE,
+                                   ignore.strand = TRUE)
+save(se.rnaseq_CLP, file = "data/RNA-RIBO_SummarizedExperiment.RData")
+se.riboseq_CLP <- summarizeOverlaps(features = ebg,
+                                    reads = bamfiles.riboseq[1:10],
+                                    mode = "Union",
+                                    singleEnd = TRUE,
+                                    ignore.strand = TRUE)
+
+for (param in rev(default)) { # restore the original register
+  register(param)
+}
+
+registered()
+
+# Return to single core with register(SerialParam()) if necessary
 
 # Access the SummarizedExperiments
 se.rnaseq
@@ -123,7 +157,6 @@ rowRanges(se.rnaseq) # information about the genomic ranges
 str(metadata(rowRanges(se.rnaseq)))
 rowRanges(se.riboseq)
 str(metadata(rowRanges(se.riboseq)))
-
 
 # Read and format metadata ------------------------------------------------
 ## Treatment groups were mislabeled at the Core during alignment. Reverse
@@ -140,53 +173,7 @@ sampleTable <- sampleTable[, c("sample", "cell_line", "treatment")] %>%
 sampleTable.rna <- dplyr::slice(sampleTable, 1:8)
 sampleTable.rpf <- dplyr::slice(sampleTable, 9:16)
 
-# Prepare BAM files
-filenames.rna <- list.files(path = "/Volumes/LACIE (2 TB)/Jennifer_Project_mapped_data",
-                    pattern = "^S0.*\\.bam$",
-                    full.names = TRUE) #names of RNA-seq input files
-file.exists(filenames.rna)
-filenames.rpf <- list.files(path = "/Volumes/LACIE (2 TB)/Jennifer_Project_mapped_data",
-                        pattern = "^rS0.*\\.bam$",
-                        full.names = TRUE) #names of RIBO-seq input files
-file.exists(filenames.rpf)
 
-bamfiles.rna <- BamFileList(filenames.rna, yieldSize = 2e6)
-seqinfo(bamfiles.rna[1])
-bamfiles.rpf <- BamFileList(filenames.rpf, yieldSize = 2e6)
-seqinfo(bamfiles.rpf[1])
-
-# Define gene models
-txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
-(ebg <- exonsBy(txdb, by = "gene"))
-
-# Obtain count matrices
-register(MulticoreParam(workers = 2)) # use 2 cores; Unix and Mac only
-
-se.rna <- summarizeOverlaps(features = ebg,
-                            reads = bamfiles.rna,
-                            mode = "Union",
-                            singleEnd = TRUE,
-                            ignore.strand = TRUE)
-
-se.rpf <- summarizeOverlaps(features = ebg,
-                            reads = bamfiles.rpf,
-                            mode = "Union",
-                            singleEnd = TRUE,
-                            ignore.strand = TRUE)
-
-# Access the SummarizedExperiment
-se.rna
-se.rpf
-
-head(assay(se.rna)) # matrix of summarized values
-head(assay(se.rpf))
-colSums(assay(se.rna))
-colSums(assay(se.rpf))
-
-rowRanges(se.rna) # information about the genomic ranges
-str(metadata(rowRanges(se.rna)))
-rowRanges(se.rpf)
-str(metadata(rowRanges(se.rpf)))
 
 colData(se.rna) # information about the samples or experiments, currently empty
 # confirm that columns of SE are in the same order as the rows of sampleTable
