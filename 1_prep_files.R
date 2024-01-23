@@ -9,44 +9,49 @@ suppressPackageStartupMessages({
   library(Rsamtools)
   library(TxDb.Hsapiens.UCSC.hg19.knownGene)
   library(GenomicAlignments)
-  library(BiocParallel)
-  library(Rsubread)
+  #library(BiocParallel)  # unknown how to allocate and register multiple CPUs to Posit Server session
+  #library(Rsubread)      # package not available on LRI Posit Server
 })
 
 # Prepare BAM files for counting ------------------------------------------
 ## Prepare BAM files from GSCs and NPCs using data from CLP and JSY Drives.
+## Both locations are stored on Isilon and are soft linked to the Posit Server
+## home directory under the link 'yulab'.
+
+## Outside Posit Server environment, locations are accessible under
+## "Volumes/yuj2lab/HRD/".
 
 ## Once code section has been run, save the output objects as "se.rnaseq" and
 ## "se.riboseq".
 
-## CLP samples are all considered "Normoxic" but this needs to be validated
+## CLP samples are all considered "Normoxic", but this needs to be validated
 
 # Locate RNA-seq input files in CLP Drive
 filenames.rnaseq.216 <-
   list.files(
-    path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF216_RNA_2019/BAM",
+    path = "/yulab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF216_RNA_2019/BAM",
     pattern = "^S.*\\.bam$",
     full.names = TRUE)
 filenames.rnaseq.315 <- list.files(
-  path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF315_RNA_2019/BAM",
+  path = "/yulab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF315_RNA_2019/BAM",
   pattern = "^S.*\\.bam$",
   full.names = TRUE)
 filenames.rnaseq.318 <- c( # GSC 318 RNA-seq data is stored in two folders
   list.files(
-    path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF318_RNA_2020/BAM",
+    path = "/yulab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF318_RNA_2020/BAM",
     pattern = "^S.*\\.bam$",
     full.names = TRUE),
   list.files(
-    path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF318_RNA_2021/BAM",
+    path = "/yulab/HRD/CLP Drive/RNA_BySampleName/GSC_CCF318_RNA_2021/BAM",
     pattern = "^S.*\\.bam$",
     full.names = TRUE)
   ) 
 filenames.rnaseq.h1 <- list.files(
-  path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/NPC_H1_RNA_2021/BAM",
+  path = "/yulab/HRD/CLP Drive/RNA_BySampleName/NPC_H1_RNA_2021/BAM",
   pattern = "^S.*\\.bam$",
   full.names = TRUE)
 filenames.rnaseq.h9 <- list.files(
-  path = "/Volumes/yuj2lab/HRD/CLP Drive/RNA_BySampleName/NPC_H9_RNA_2021/BAM",
+  path = "/yulab/HRD/CLP Drive/RNA_BySampleName/NPC_H9_RNA_2021/BAM",
   pattern = "^H9.*\\.bam$",
   full.names = TRUE)
 
@@ -56,7 +61,7 @@ filenames.rnaseq <- c(filenames.rnaseq.216,
                       filenames.rnaseq.h1,
                       filenames.rnaseq.h9,
                       list.files(
-                        path = "/Volumes/yuj2lab/HRD/Sequencing/RNA Core/Jennifer_Project_mapped_data",
+                        path = "/yulab/HRD/Sequencing/RNA Core/Jennifer_Project_mapped_data",
                         pattern = "^S0.*\\.sorted.bam$",
                         full.names = TRUE)) # add JSY Drive rna-seq files
 
@@ -64,23 +69,23 @@ file.exists(filenames.rnaseq) # confirm file names are valid
 
 # Locate RIBO-seq input files in CLP Drive
 filenames.riboseq.216 <- list.files(
-  path = "/Volumes/yuj2lab/HRD/CLP Drive/RPF_BySampleName/GSC_CCF216_RPF_2020/BAM",
+  path = "/yulab/HRD/CLP Drive/RPF_BySampleName/GSC_CCF216_RPF_2020/BAM",
   pattern = "^rS.*\\.bam$",
   full.names = TRUE)
 filenames.riboseq.315 <- list.files(
-  path = "/Volumes/yuj2lab/HRD/CLP Drive/RPF_BySampleName/GSC_CCF315_RPF_2020/BAM",
+  path = "/yulab/HRD/CLP Drive/RPF_BySampleName/GSC_CCF315_RPF_2020/BAM",
   pattern = "^rS.*\\.bam$",
   full.names = TRUE)
 filenames.riboseq.318 <- list.files(
-  path = "/Volumes/yuj2lab/HRD/CLP Drive/RPF_BySampleName/GSC_CCF318_RPF_2020/BAM",
+  path = "/yulab/HRD/CLP Drive/RPF_BySampleName/GSC_CCF318_RPF_2020/BAM",
   pattern = "^rS.*\\.bam$",
   full.names = TRUE)
 filenames.riboseq.h1 <- list.files(
-  path = "/Volumes/yuj2lab/HRD/CLP Drive/RPF_BySampleName/NPC_H1_RPF_2021/BAM",
+  path = "/yulab/HRD/CLP Drive/RPF_BySampleName/NPC_H1_RPF_2021/BAM",
   pattern = "^rS.*\\.bam$",
   full.names = TRUE)
 filenames.riboseq.h9 <- list.files(
-  path = "/Volumes/yuj2lab/HRD/CLP Drive/RPF_BySampleName/NPC_H9_RPF_2021/BAM",
+  path = "/yulab/HRD/CLP Drive/RPF_BySampleName/NPC_H9_RPF_2021/BAM",
   pattern = "^rS.*\\.bam$",
   full.names = TRUE)
 
@@ -90,7 +95,7 @@ filenames.riboseq <- c(filenames.riboseq.216,
                        filenames.riboseq.h1,
                        filenames.riboseq.h9,
                        list.files(
-                         path = "/Volumes/yuj2lab/HRD/Sequencing/RNA Core/Jennifer_Project_mapped_data",
+                         path = "/yulab/HRD/Sequencing/RNA Core/Jennifer_Project_mapped_data",
                          pattern = "^rS0.*\\.bam$",
                          full.names = TRUE)) # add JSY Drive RIBO-seq files
 
