@@ -1,25 +1,32 @@
 ### STEP 2: Quality assessment and visualization ###
 
+## This script will
+
 # Load .RData file from STEP 1
-load("RNA-RIBO_SummarizedExperiment.RData")
+## Move .RData file from Isilon for use outside LRI Network with the following command:
+# rsync -r -progress -size-only /home/dashorh/rnaseq-riboseq/data/RNA-RIBO_SummarizedExperiment.RData /mnt/isilon/w_stemcell/yuj2lab/HRD/Sequencing/'RNA Core'
+
+load("data/RNA-RIBO_SummarizedExperiment.RData")
 
 # Load libraries
-library(DESeq2)
-library(magrittr)
-library(dplyr)
-library(ggplot2)
-library(pheatmap)
-library(RColorBrewer)
-library(PoiClaClu)
-library(vsn)
-library(cowplot)
-library(gridExtra)
-library(TxDb.Hsapiens.UCSC.hg19.knownGene)
-library(scuttle)
-library(tidyr)
-library(tibble)
-library(stringr)
-library(viridis)
+suppressPackageStartupMessages({
+  library(DESeq2)
+  library(magrittr)
+  library(dplyr)
+  library(ggplot2)
+  library(pheatmap)
+  library(RColorBrewer)
+  library(PoiClaClu)
+  library(vsn)
+  library(cowplot)
+  library(gridExtra)
+  library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+  library(scuttle)
+  library(tidyr)
+  library(tibble)
+  library(stringr)
+  library(viridis)
+})
 
 # Determine the design formula
 se.rna$treatment

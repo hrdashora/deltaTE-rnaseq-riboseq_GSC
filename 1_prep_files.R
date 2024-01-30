@@ -187,7 +187,7 @@ str(metadata(rowRanges(se.riboseq)))
 ## labels here as a correction with the fct_recode function.
 
 dir <- getwd()
-sampleTable <- read_delim(file = file.path(dir, "meta", "metatable.txt"))
+sampleTable <- read_delim(file = file.path(dir, "meta", "gsc_npc_metatable.txt"))
 colnames(sampleTable)
 sampleTable <- sampleTable[, c("sample", "cell_line", "treatment")] %>% 
   mutate(across(.cols = c(cell_line, treatment), .fns = as_factor)) %>%
