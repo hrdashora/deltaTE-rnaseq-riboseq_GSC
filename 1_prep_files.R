@@ -3,7 +3,7 @@
 ## This script will prepare pre-processed BAM files for counting, then preserve
 ## the counts as SummarizedExperiment objects for use by DESeq2 subsequently.
 
-# Load libraries
+# Load libraries and custom functions
 suppressPackageStartupMessages({
   library(tidyverse)
   library(Rsamtools)
@@ -12,6 +12,8 @@ suppressPackageStartupMessages({
   library(BiocParallel)  # Register multiple CPUs to Posit Server session
   #library(Rsubread)      # package not available on Posit Server
 })
+
+source("mutate_when.R")
 
 # Prepare BAM files for counting ------------------------------------------
 ## Prepare BAM files from GSCs and NPCs using data from CLP and JSY Drives.
@@ -189,20 +191,40 @@ str(metadata(rowRanges(se.riboseq)))
 dir <- getwd()
 sampleTable <- read_delim(file = file.path(dir, "meta", "gsc_npc_metatable.txt"))
 colnames(sampleTable)
-sampleTable <- sampleTable[, c("sample", "cell_line", "treatment")] %>% 
+sampleTable <- sampleTable %>% 
   mutate(across(.cols = c(cell_line, treatment), .fns = as_factor))
-sampleTable.rna <- dplyr::slice(sampleTable, 1:8)
-sampleTable.rpf <- dplyr::slice(sampleTable, 9:16)
 
-colData(se.rna) # information about the samples or experiments, currently empty
+sampleTable.rna <- dplyr::filter(sampleTable, assay == "rna") %>%
+  dplyr::select(-c("assay", "sample"))
+sampleTable.rpf <- dplyr::filter(sampleTable, assay == "ribo") %>%
+  dplyr::select(-c("assay", "sample"))
+
+# Utilize helper function to edit file names for specific rows
+# sampleTable.rpf %>% mutate_when(
+#   source == "CLP", list(file_name = str_replace(file_name,
+#                                                 pattern = "genome.bam",
+#                                                 replacement = "genome.sorted.bam")))
+
+# Alternatively, utilize case_when within a call to the mutate function in dplyr
+sampleTable.rpf <- sampleTable.rpf %>% mutate(
+  file_name = case_when(
+    source == "CLP" ~ str_replace(file_name,
+                                  pattern = "genome.bam",
+                                  replacement = "genome.sorted.bam"),
+    .default = file_name))
+
+colData(se.rnaseq) # information about the samples or experiments, currently empty
 # confirm that columns of SE are in the same order as the rows of sampleTable
-str_remove(str_sub(colnames(se.rna), 1, 3), "0") == sampleTable.rna$sample
-(colData(se.rna) <- DataFrame(sampleTable.rna))
-colData(se.rna)
+colnames(se.rnaseq) == sampleTable.rna$file_name
+(colData(se.rnaseq) <- DataFrame(sampleTable.rna))
+colData(se.rnaseq)
 
-colData(se.rpf)
-str_remove(str_sub(colnames(se.rpf), 1, 4), "0") == sampleTable.rpf$sample
-(colData(se.rpf) <- DataFrame(sampleTable.rpf))
-colData(se.rpf)
+colData(se.riboseq)
+colnames(se.riboseq) == sampleTable.rpf$file_name
+(colData(se.riboseq) <- DataFrame(sampleTable.rpf))
+colData(se.riboseq)
 
-save(se.rna, se.rpf, sampleTable.rna, sampleTable.rpf, file = "RNA-RIBO_SummarizedExperiment.RData")
+save(se.rnaseq, se.riboseq, sampleTable.rna, sampleTable.rpf, file = "data/RNA-RIBO_SummarizedExperiment.RData")
+
+## Move this .RData file from RStudio Server into Isilon with the following command:
+# rsync -r -progress -size-only /home/dashorh/rnaseq-riboseq/data/RNA-RIBO_SummarizedExperiment.RData /mnt/isilon/w_stemcell/yuj2lab/HRD/Sequencing/'RNA Core'

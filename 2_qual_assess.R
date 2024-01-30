@@ -2,9 +2,9 @@
 
 ## This script will
 
-# Load .RData file from STEP 1
-## Move .RData file from Isilon to with the following command in the terminal:
-# rsync -r -progress -size-only /home/dashorh/rnaseq-riboseq/data/RNA-RIBO_SummarizedExperiment.RData /mnt/isilon/w_stemcell/yuj2lab/HRD/Sequencing/'RNA Core'
+# Load .RData file from Step 1
+## Move .RData file from Isilon to working directory with the following command in the terminal:
+# rsync -r -progress -size-only /mnt/isilon/w_stemcell/yuj2lab/HRD/Sequencing/'RNA Core' /Users/dashorh/rnaseq-riboseq/data/
 
 load("data/RNA-RIBO_SummarizedExperiment.RData")
 
@@ -17,7 +17,6 @@ suppressPackageStartupMessages({
   library(pheatmap)
   library(RColorBrewer)
   library(PoiClaClu)
-  library(vsn)
   library(cowplot)
   library(gridExtra)
   library(TxDb.Hsapiens.UCSC.hg19.knownGene)

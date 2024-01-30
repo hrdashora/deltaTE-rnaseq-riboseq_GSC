@@ -1,4 +1,4 @@
-### STEP 3: Calculate TPM and visualize translational efficiency ###
+### STEP 3: Calculate TPM and visualize TE (translational efficiency) ###
 
 # Calculate TPMs
 txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
