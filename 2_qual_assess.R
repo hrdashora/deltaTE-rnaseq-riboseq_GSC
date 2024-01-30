@@ -3,7 +3,7 @@
 ## This script will
 
 # Load .RData file from STEP 1
-## Move .RData file from Isilon for use outside LRI Network with the following command:
+## Move .RData file from Isilon to with the following command in the terminal:
 # rsync -r -progress -size-only /home/dashorh/rnaseq-riboseq/data/RNA-RIBO_SummarizedExperiment.RData /mnt/isilon/w_stemcell/yuj2lab/HRD/Sequencing/'RNA Core'
 
 load("data/RNA-RIBO_SummarizedExperiment.RData")

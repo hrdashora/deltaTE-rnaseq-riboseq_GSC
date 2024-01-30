@@ -4,7 +4,6 @@
 .Rapp.history
 # Session Data files
 *.RData
-*.txt
 # User-specific files
 .Ruserdata
 #RStudio files

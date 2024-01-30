@@ -190,14 +190,9 @@ dir <- getwd()
 sampleTable <- read_delim(file = file.path(dir, "meta", "gsc_npc_metatable.txt"))
 colnames(sampleTable)
 sampleTable <- sampleTable[, c("sample", "cell_line", "treatment")] %>% 
-  mutate(across(.cols = c(cell_line, treatment), .fns = as_factor)) %>%
-  mutate(treatment = fct_recode(treatment,
-                                Hypoxia = "Normoxic",
-                                Normoxia = "Hypoxic")) # reversing the labels
+  mutate(across(.cols = c(cell_line, treatment), .fns = as_factor))
 sampleTable.rna <- dplyr::slice(sampleTable, 1:8)
 sampleTable.rpf <- dplyr::slice(sampleTable, 9:16)
-
-
 
 colData(se.rna) # information about the samples or experiments, currently empty
 # confirm that columns of SE are in the same order as the rows of sampleTable

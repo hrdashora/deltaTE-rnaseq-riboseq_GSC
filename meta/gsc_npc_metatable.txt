@@ -1,0 +1,42 @@
+file_name	sample	assay	replicate	cell_line	treatment	source
+S01.sorted.bam		rna	1	216	hypoxia	CLP
+S02.sorted.bam		rna	2	216	hypoxia	CLP
+S05.sorted.bam		rna	1	315	hypoxia	CLP
+S06.sorted.bam		rna	2	315	hypoxia	CLP
+S08.STAR.genome.bamsorted.bam		rna	1	318	normoxia	CLP
+S10.STAR.genome.bamsorted.bam		rna	2	318	normoxia	CLP
+S01_CCF318_R1.sorted.bam		rna	3	318	normoxia	CLP
+S02_CCF318_R2.sorted.bam		rna	4	318	normoxia	CLP
+S03_CCF318_R3.sorted.bam		rna	5	318	normoxia	CLP
+S10_H1_eb_NPC_R1.sorted.bam		rna	1	H1	normoxia	CLP
+S11_H1_eb_NPC_R2.sorted.bam		rna	2	H1	normoxia	CLP
+S12_H1_eb_NPC_R3.sorted.bam		rna	3	H1	normoxia	CLP
+H9V2_RNA_seq_r1_S4.STAR.genome.bam		rna	1	H9	normoxia	CLP
+H9V2_RNA_seq_r2_S5.STAR.genome.bam		rna	2	H9	normoxia	CLP
+H9V2_RNA_seq_r3_S6.STAR.genome.bam		rna	3	H9	normoxia	CLP
+S01.STAR.genome.sorted.bam	S1	rna	1	216	hypoxia	JSY
+S02.STAR.genome.sorted.bam	S2	rna	2	216	hypoxia	JSY
+S03.STAR.genome.sorted.bam	S3	rna	1	216	normoxia	JSY
+S04.STAR.genome.sorted.bam	S4	rna	2	216	normoxia	JSY
+S05.STAR.genome.sorted.bam	S5	rna	1	315	hypoxia	JSY
+S06.STAR.genome.sorted.bam	S6	rna	2	315	hypoxia	JSY
+S07.STAR.genome.sorted.bam	S7	rna	1	315	normoxia	JSY
+S08.STAR.genome.sorted.bam	S8	rna	2	315	normoxia	JSY
+rS01.STAR.genome.bam		ribo	1	216	hypoxia	CLP
+rS02.STAR.genome.bam		ribo	2	216	hypoxia	CLP
+rS05.STAR.genome.bam		ribo	1	315	hypoxia	CLP
+rS06.STAR.genome.bam		ribo	2	315	hypoxia	CLP
+rS09.STAR.genome.sorted.bam		ribo	1	318	normoxia	CLP
+rS10.STAR.genome.sorted.bam		ribo	2	318	normoxia	CLP
+rS01_CLP_H1ebNPC_R1.sorted.bam		ribo	1	H1	normoxia	CLP
+rS02_CLP_H1ebNPC_R2.sorted.bam		ribo	2	H1	normoxia	CLP
+rS03_H9NPC_R3_S3.sorted.bam		ribo	1	H9	normoxia	CLP
+rS04_H9NPC_R4_S4.sorted.bam		ribo	2	H9	normoxia	CLP
+rS01.STAR.genome.bam	rS1	ribo	1	216	hypoxia	JSY
+rS02.STAR.genome.bam	rS2	ribo	2	216	hypoxia	JSY
+rS03.STAR.genome.bam	rS3	ribo	1	216	normoxia	JSY
+rS04.STAR.genome.bam	rS4	ribo	2	216	normoxia	JSY
+rS05.STAR.genome.bam	rS5	ribo	1	315	hypoxia	JSY
+rS06.STAR.genome.bam	rS6	ribo	2	315	hypoxia	JSY
+rS07.STAR.genome.bam	rS7	ribo	1	315	normoxia	JSY
+rS08.STAR.genome.bam	rS8	ribo	2	315	normoxia	JSY
