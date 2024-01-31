@@ -27,27 +27,68 @@ suppressPackageStartupMessages({
   library(viridis)
 })
 
-# Determine the design formula
-se.rna$treatment
-se.rpf$treatment
+# Construct a DESeqDataSet object -----------------------------------------
+# Confirm that sample information is present
+colData(se.rnaseq) 
+colData(se.riboseq)
 
-se.rna$treatment <- relevel(se.rna$treatment, ref = "Normoxia")
-se.rpf$treatment <- relevel(se.rpf$treatment, ref = "Normoxia")
+# Determine the design formula from the factors in the sample table
+se.rnaseq$treatment
+se.riboseq$treatment
+se.rnaseq$cell_line
+se.riboseq$cell_line
 
-se.rna$cell_line
-se.rpf$cell_line
+# Set the appropriate reference levels
+se.rnaseq$treatment <- relevel(se.rnaseq$treatment, ref = "normoxia")
+se.riboseq$treatment <- relevel(se.riboseq$treatment, ref = "normoxia")
 
-# Construct a DESeqDataSet object
-round(colSums(assay(se.rna)) / 1e6, 1) # check the millions of fragments that uniquely align
-round(colSums(assay(se.rpf)) / 1e6, 1)
-colData(se.rna) # confirm that sample information is present
-colData(se.rpf)
-dds.rna <- DESeqDataSet(se.rna, design = ~ cell_line + treatment) # starting from SummarizedExperiment
-dds.rpf <- DESeqDataSet(se.rpf, design = ~ cell_line + treatment)
+# Check the millions of fragments that uniquely align
+## Samples from the CLP source and JSY source are duplicated. Indexes of
+## duplicated entries in both SummarizedExperiment objects are shown here.
+round(colSums(assay(se.rnaseq)) / 1e6, 1)
+round(colSums(assay(se.rnaseq)) / 1e6, 1)[1:4] ==
+  round(colSums(assay(se.rnaseq)) / 1e6, 1)[c(16:17,20:21)]
+
+round(colSums(assay(se.riboseq)) / 1e6, 1)[1:4] ==
+  round(colSums(assay(se.riboseq)) / 1e6, 1)[c(11:12,15:16)]
+
+# Perform two-dimensional subsetting of the SummarizedExperiment objects while
+# creating the DESeqDataSet objects
+dds.rna_hn <- DESeqDataSet(se.rnaseq[,se.rnaseq$source == "JSY"],
+                           design = ~ cell_line + treatment)
+dds.rpf_hn <- DESeqDataSet(se.riboseq[,se.riboseq$source == "JSY"],
+                           design = ~ cell_line + treatment)
+
+dds.rna_gscnpc <- DESeqDataSet(se.rnaseq[,se.rnaseq$treatment == "normoxia"],
+                               design = ~ cell_line)
+dds.rpf_gscnpc <- DESeqDataSet(se.rnaseq[,se.riboseq$treatment == "normoxia"],
+                               design = ~ cell_line)
 
 # Apply minimal pre-filtering of the data-set
-nrow(dds.rna)
+## Keep only rows that have a count of at least 10 for a minimal number of
+## samples
+source("prefilter_genes.R")
+dds.rna_hn <- prefilter_genes(dds = dds.rna_hn, group = "treatment")
+
+
+smallestGroupSize <- min(table(dds.rna_hn$treatment))
+keep <- rowSums(counts(dds.rna_hn) >= 10) >= smallestGroupSize
+dds.rna_hn <- dds.rna_hn[keep,]
+nrow(dds.rna_hn)
+
+nrow(dds.rpf_hn)
+smallestGroupSize <- min(table(dds.rpf_hn$treatment))
+keep <- rowSums(counts(dds.rpf_hn) >= 10) >= smallestGroupSize
+dds.rpf_hn <- dds.rpf_hn[keep,]
+nrow(dds.rna_hn)
+
+dds.rna_hn$cell_line
+
 nrow(dds.rpf)
+
+smallestGroupSize <- 3
+keep <- rowSums(counts(dds) >= 10) >= smallestGroupSize
+dds <- dds[keep,]
 
 dds.rna <- dds.rna[ rowSums(counts(dds.rna)) > 1, ]
 dds.rpf <- dds.rpf[ rowSums(counts(dds.rpf)) > 1, ]
