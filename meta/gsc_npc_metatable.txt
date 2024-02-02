@@ -5,9 +5,9 @@ S05.sorted.bam		rna	1	315	hypoxia	CLP
 S06.sorted.bam		rna	2	315	hypoxia	CLP
 S08.STAR.genome.bamsorted.bam		rna	1	318	normoxia	CLP
 S10.STAR.genome.bamsorted.bam		rna	2	318	normoxia	CLP
-S01_CCF318_R1.sorted.bam		rna	3	318	normoxia	CLP
-S02_CCF318_R2.sorted.bam		rna	4	318	normoxia	CLP
-S03_CCF318_R3.sorted.bam		rna	5	318	normoxia	CLP
+S01_CCF318_R1.sorted.bam		rna	1	318	normoxia	CLP
+S02_CCF318_R2.sorted.bam		rna	2	318	normoxia	CLP
+S03_CCF318_R3.sorted.bam		rna	3	318	normoxia	CLP
 S10_H1_eb_NPC_R1.sorted.bam		rna	1	H1	normoxia	CLP
 S11_H1_eb_NPC_R2.sorted.bam		rna	2	H1	normoxia	CLP
 S12_H1_eb_NPC_R3.sorted.bam		rna	3	H1	normoxia	CLP

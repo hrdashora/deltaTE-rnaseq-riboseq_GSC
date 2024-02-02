@@ -13,8 +13,6 @@ suppressPackageStartupMessages({
   #library(Rsubread)      # package not available on Posit Server
 })
 
-source("mutate_when.R")
-
 # Prepare BAM files for counting ------------------------------------------
 ## Prepare BAM files from GSCs and NPCs using data from CLP and JSY Drives.
 ## Both locations are stored on Isilon and are soft linked to the Posit Server
@@ -188,24 +186,22 @@ str(metadata(rowRanges(se.riboseq)))
 ## Treatment groups were mislabeled at the Core during alignment. Reverse
 ## labels here as a correction with the fct_recode function.
 
+# To refresh metadata, clear environment and load .RData file
+load("data/RNA-RIBO_SummarizedExperiment.RData")
+
 dir <- getwd()
 sampleTable <- read_delim(file = file.path(dir, "meta", "gsc_npc_metatable.txt"))
 colnames(sampleTable)
 sampleTable <- sampleTable %>% 
-  mutate(across(.cols = c(cell_line, treatment), .fns = as_factor))
+  mutate(across(.cols = c(cell_line, treatment, replicate), .fns = as_factor))
 
 sampleTable.rna <- dplyr::filter(sampleTable, assay == "rna") %>%
   dplyr::select(-c("assay", "sample"))
 sampleTable.rpf <- dplyr::filter(sampleTable, assay == "ribo") %>%
   dplyr::select(-c("assay", "sample"))
 
-# Utilize helper function to edit file names for specific rows
-# sampleTable.rpf %>% mutate_when(
-#   source == "CLP", list(file_name = str_replace(file_name,
-#                                                 pattern = "genome.bam",
-#                                                 replacement = "genome.sorted.bam")))
-
-# Alternatively, utilize case_when within a call to the mutate function in dplyr
+# Utilize case_when within a call to the mutate function in dplyr
+# to edit file names for specific rows
 sampleTable.rpf <- sampleTable.rpf %>% mutate(
   file_name = case_when(
     source == "CLP" ~ str_replace(file_name,
