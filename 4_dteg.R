@@ -28,6 +28,7 @@ colnames(ribo_counts_gscnpc) <- colData(subset(se.riboseq,
                                                select = treatment == "normoxia"))$file_name
 
 # Create sample information data frames
+require(forcats)
 colData(se.rnaseq)$assay <- factor(rep("rna", ncol(se.rnaseq)))
 colData(se.riboseq)$assay <- factor(rep("ribo", ncol(se.riboseq)))
 
