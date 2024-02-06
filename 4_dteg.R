@@ -115,6 +115,7 @@ resultsNames(ddsMat_gscnpc_rna)
 res_gscnpc_rna <- lfcShrink(ddsMat_gscnpc_rna,
                             coef = "Condition_gsc_vs_npc",
                             type = "apeglm")
+
 write.table(res_gscnpc_rna[which(res_gscnpc_rna$padj < 0.05), ],
             "results/DEGs_gscnpc.txt",
             quote = FALSE)
