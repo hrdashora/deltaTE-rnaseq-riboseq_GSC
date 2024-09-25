@@ -1,4 +1,4 @@
-### STEP 2: Quality assessment and visualization ###
+  ### STEP 2: Quality assessment and visualization ###
 
 ## This script will prepare gene counts and set up contrasts for downstream DE
 ## analysis with the DESeq2 package. Pre-filtering, transformations, and 
@@ -7,6 +7,9 @@
 # Load .RData file from Step 1
 ## Move .RData file from Isilon to working directory with the following command in the terminal:
 # rsync -r -progress -size-only /mnt/isilon/w_stemcell/yuj2lab/HRD/Sequencing/'RNA Core' /Users/dashorh/rnaseq-riboseq/data/
+
+## When transferring .Rdata between MacOS and Windows RStudio environments, utilize CWRU OneDrive.
+## Windows Path: "C:\Users\Himanshu Dashora\OneDrive - Case Western Reserve University\Yu Lab\Code Snippets\data"
 
 load("data/RNA-RIBO_SummarizedExperiment.RData")
 
